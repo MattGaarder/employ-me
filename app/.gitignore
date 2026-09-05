@@ -1,0 +1,4 @@
+node_modules/
+dist/
+data/employ-me.db
+.env

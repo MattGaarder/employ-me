@@ -1,0 +1,384 @@
+{
+  "candidate": {
+    "identity": {
+      "firstName": "Matteus",
+      "lastName": "Gaarder",
+      "fullName": "Matteus Gaarder"
+    },
+
+    "contact": {
+      "email": "matteus.gaarder@gmail.com",
+      "phone": "07498650030"
+    },
+
+    "location": {
+      "currentCountry": "Brazil",
+      "city": "Fortaleza",
+      "postcode": "60833-155",
+      "address": "Ministro Abner de Vasconcelos 301"
+    },
+
+    "professionalLinks": {
+      "linkedin": "https://linkedin.com/in/matteus-gaarder-991494178/",
+      "portfolio": "https://gaarder.netlify.app",
+      "github": "https://github.com/MattGaarder"
+    },
+
+    "professionalIdentity": {
+      "headline": "Learning Design + Technology + Creative Production + Automation + AI",
+      "summary": "Professional working at the intersection of technology, learning, and design, combining learning design and eLearning development, software and web development, multimedia production, teaching, localisation QA, AI data work, and automation."
+    },
+
+    "education": [
+      {
+        "institution": "University of Manchester",
+        "qualification": "BA (Hons) Japanese and Screen Studies",
+        "classification": "Second Class",
+        "startDate": "2011-01",
+        "endDate": "2015-01",
+        "areasOfStudy": [
+          "Japanese language",
+          "Medieval history",
+          "Contemporary sociology",
+          "Film",
+          "Screen studies",
+          "Filmmaking",
+          "Editing",
+          "Visual storytelling"
+        ],
+        "additionalExperience": [
+          "Directed short films",
+          "Produced short films",
+          "Developed filmmaking and editing skills"
+        ]
+      },
+      {
+        "institution": "edX Trinity Skills Bootcamp",
+        "qualification": "Front-End Web Development",
+        "startDate": "2023-01",
+        "endDate": "2023-12",
+        "skillsDeveloped": [
+          "HTML5",
+          "CSS3",
+          "JavaScript",
+          "jQuery",
+          "React.js",
+          "Node.js"
+        ],
+        "projects": [
+          "Social media application",
+          "Weather dashboard",
+          "Command-line applications",
+          "Film comparison application"
+        ]
+      }
+    ],
+
+    "employment": [
+      {
+        "employer": "Postwork Labs",
+        "jobTitle": "AI Data Contributor",
+        "startDate": "2025-09",
+        "endDate": null,
+        "current": true,
+        "location": "Remote",
+        "responsibilities": [
+          "Complete coding projects across a range of technical domains",
+          "Produce high-quality, well-documented code intended to support the training of frontier AI systems",
+          "Apply programming and problem-solving skills to deliver efficient solutions aligned with project specifications",
+          "Ensure accuracy, consistency, and clarity of code outputs",
+          "Contribute to robust, real-world AI training data"
+        ],
+        "skillsDemonstrated": [
+          "Software development",
+          "Coding",
+          "Technical problem-solving",
+          "AI training",
+          "Quality assurance",
+          "Structured problem-solving",
+          "Attention to detail"
+        ]
+      },
+
+      {
+        "employer": "PricewaterhouseCoopers (PwC)",
+        "jobTitle": "eLearning Developer",
+        "startDate": "2023-09",
+        "endDate": "2025-03",
+        "current": false,
+        "location": "London, UK",
+        "responsibilities": [
+          "Designed and authored eLearning materials using Adobe Creative Suite and Articulate Storyline",
+          "Produced multimedia assets for digital learning experiences",
+          "Implemented custom features and functionality using JavaScript",
+          "Extended standard authoring-tool functionality where required",
+          "Worked on engagement and interactivity within eLearning experiences",
+          "Integrated AI, automation, and technology solutions into workflows"
+        ],
+        "tools": [
+          "Articulate Storyline",
+          "Adobe Creative Suite",
+          "JavaScript",
+          "Excel",
+          "Automation",
+          "AI tools"
+        ],
+        "additionalExperience": [
+          "Used AI, automation, and technology solutions to improve workflow quality and efficiency",
+          "Focused on reducing administrative and managerial overhead through automation"
+        ],
+        "keyRelevance": [
+          "Learning design",
+          "eLearning development",
+          "Multimedia",
+          "Technology",
+          "Automation",
+          "AI"
+        ]
+      },
+      {
+        "employer": "Testronic",
+        "jobTitle": "Localisation Tester",
+        "startDate": "2021-07",
+        "endDate": "2023-09",
+        "current": false,
+        "location": "London, UK",
+        "responsibilities": [
+          "Conducted final-stage quality assurance for AAA games",
+          "Identified bugs, UX/UI issues, and language inconsistencies",
+          "Worked with international teams to support and expedite bug resolution",
+          "Cross-referenced Japanese and English scripts",
+          "Communicated with translators to ensure language accuracy",
+          "Used Excel and JIRA for issue tracking"
+        ],
+        "skillsDemonstrated": [
+          "Quality assurance",
+          "Attention to detail",
+          "Bug identification",
+          "UX/UI awareness",
+          "Cross-cultural communication",
+          "Japanese/English language comparison",
+          "Issue tracking",
+          "International collaboration"
+        ]
+      },
+
+      {
+        "employer": "TransPerfect",
+        "jobTitle": "Project Moderator",
+        "startDate": "2022-11",
+        "endDate": "2023-05",
+        "current": false,
+        "location": "London, UK",
+        "responsibilities": [
+          "Facilitated structured data-collection sessions for AI and assistant products",
+          "Delivered clear, actionable instructions to participants",
+          "Ensured participant activity produced high-quality data",
+          "Worked according to client requirements and quality standards"
+        ],
+        "skillsDemonstrated": [
+          "AI data collection",
+          "Facilitation",
+          "Instruction writing",
+          "Quality control",
+          "Communication",
+          "Following detailed specifications",
+          "AI-related products"
+        ]
+      },
+
+      {
+        "employer": "JET Programme",
+        "jobTitle": "Assistant Language Teacher",
+        "startDate": "2015-08",
+        "endDate": "2018-08",
+        "current": false,
+        "location": "Tokyo, Japan",
+        "responsibilities": [
+          "Taught English in Japan",
+          "Prepared learning materials",
+          "Supervised school events",
+          "Organised cultural events",
+          "Developed mathematics and science curriculum for international students"
+        ],
+        "additionalRoles": [
+          "Head Teacher of English Club",
+          "Cultural Exchange Ambassador"
+        ],
+        "skillsDemonstrated": [
+          "Teaching",
+          "Curriculum development",
+          "Learning-material creation",
+          "Facilitation",
+          "Communication",
+          "Event organisation",
+          "Leadership",
+          "Cross-cultural communication"
+        ]
+      },
+
+      {
+        "employer": "Digital Media Academy (DMA)",
+        "jobTitle": "Film Production Instructor",
+        "startDate": "2011-07",
+        "endDate": "2011-08",
+        "current": false,
+        "location": "Stanford, California, USA",
+        "responsibilities": [
+          "Supported students using professional cameras",
+          "Taught students how to use video-editing software",
+          "Helped students develop practical film-production skills"
+        ],
+        "additionalRecognition": "Hired by the programme director after demonstrating outstanding achievements in film production",
+        "skillsDemonstrated": [
+          "Film production",
+          "Video editing",
+          "Visual storytelling",
+          "Teaching",
+          "Mentoring",
+          "Creative technology"
+        ]
+      }
+    ],
+
+    "skills": {
+      "learningAndDevelopment": [
+        "Learning design",
+        "eLearning development",
+        "Instructional design",
+        "Learning experience design",
+        "Digital learning",
+        "Curriculum development",
+        "Learning-material development",
+        "Interactive learning",
+        "Facilitation"
+      ],
+
+      "authoringAndLearningTechnology": [
+        "Articulate Storyline"
+      ],
+
+      "multimediaAndCreative": [
+        "Adobe Creative Suite",
+        "Photoshop",
+        "Premiere",
+        "After Effects",
+        "Film production",
+        "Video editing",
+        "Visual storytelling"
+      ],
+
+      "programmingAndWebDevelopment": [
+        "JavaScript",
+        "HTML5",
+        "CSS3",
+        "jQuery",
+        "React.js",
+        "Vue",
+        "Node.js"
+      ],
+
+      "automationAndProductivity": [
+        "Microsoft Power Platform",
+        "Excel",
+        "VBA",
+        "Google Apps Script",
+        "JavaScript-based automation"
+      ],
+
+      "cloudAndData": [
+        "Azure",
+        "Firebase",
+        "MongoDB",
+        "Mongoose",
+        "Git",
+        "Git LFS",
+        "Netlify",
+        "npm"
+      ],
+
+      "aiAndData": [
+        "AI training data",
+        "AI data collection",
+        "Coding for AI training",
+        "Structured data collection",
+        "AI-assisted workflows",
+        "AI tools",
+        "Quality assurance"
+      ],
+
+      "qualityAndProcess": [
+        "Quality assurance",
+        "Bug identification",
+        "Attention to detail",
+        "Technical problem-solving",
+        "Troubleshooting",
+        "Following detailed specifications",
+        "Issue tracking",
+        "Workflow optimisation"
+      ]
+    },
+
+    "languages": [
+      {
+        "language": "Japanese",
+        "proficiency": "Advanced"
+      },
+      {
+        "language": "Portuguese",
+        "proficiency": "Advanced"
+      },
+      {
+        "language": "Norwegian",
+        "proficiency": "Proficient"
+      },
+      {
+        "language": "English",
+        "proficiency": "Native"
+      }
+    ],
+
+    "applicationInformation": {
+      "workAuthorization": true,
+      "requiresVisaSponsorship": false,
+      "noticePeriod": "1 month",
+      "salaryExpectation": "£30000",
+      "dateAvailable": "2026-10-03",
+      "willingToRelocate": true,
+      "willingToTravel": true
+    },
+
+    "documents": {
+      "cv": "/Users/matteusgaarder/Desktop/Projects/employ-me/app/src/ai/GAARDER-CV.docx",
+      "coverLetter": null
+    },
+
+    "references": [
+      {
+        "name": "Joseph Sykes",
+        "organisation": "PwC",
+        "email": "joseph.sykes@pwc.com"
+      },
+      {
+        "name": "Khalil Williams",
+        "organisation": "TransPerfect",
+        "email": "khwilliams@transperfect.com"
+      },
+      {
+        "name": "Travis Schlafmann",
+        "organisation": "Digital Media Academy",
+        "email": "travis@digitalmediaacademy.org"
+      }
+    ],
+
+    "applicationRules": {
+      "neverInventInformation": true,
+      "distinguishProfessionalExperienceFromEducation": true,
+      "distinguishProfessionalExperienceFromPersonalProjects": true,
+      "doNotExaggerateExperience": true,
+      "requireEvidenceForTechnologyClaims": true,
+      "useCautiousLanguageWhenEvidenceIsAmbiguous": true,
+      "unknownValuePolicy": "Do not infer. Leave blank or request clarification."
+    }
+  }
+}

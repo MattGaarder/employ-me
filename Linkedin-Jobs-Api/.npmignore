@@ -1,0 +1,36 @@
+# Development files
+.git
+.gitignore
+.env
+.env.example
+.vscode
+.idea
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules
+
+# Testing
+coverage
+.nyc_output
+
+# Development configurations
+nodemon.json
+.eslintrc
+.prettierrc
+
+# Documentation drafts
+docs-drafts
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
