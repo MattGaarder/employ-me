@@ -26,6 +26,15 @@ export function getDb(): Database.Database {
   // Create tables if they don't exist (idempotent)
   db.exec(SCHEMA_SQL);
 
+  // Lightweight migration: add application_status if it was added after initial DB creation
+  const hasAppStatus = (db.prepare(
+    `SELECT 1 FROM pragma_table_info('jobs') WHERE name = 'application_status'`
+  ).get() as any);
+  if (!hasAppStatus) {
+    db.exec(`ALTER TABLE jobs ADD COLUMN application_status TEXT NOT NULL DEFAULT 'NOT_READY'`);
+    console.log('[db] Added jobs.application_status column');
+  }
+
   console.log(`[db] SQLite database ready: ${dbPath}`);
   return db;
 }

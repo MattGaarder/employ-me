@@ -15,6 +15,7 @@ export const SCHEMA_SQL = `
     fit_explanation     TEXT,
     cover_letter    TEXT,
     status          TEXT    NOT NULL DEFAULT 'DISCOVERED',
+    application_status TEXT NOT NULL DEFAULT 'NOT_READY',
     application_url TEXT,
     notes           TEXT,
     created_at      TEXT    NOT NULL,

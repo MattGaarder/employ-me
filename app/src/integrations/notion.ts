@@ -1,9 +1,15 @@
 // Notion database integration
 
 import { Client } from '@notionhq/client';
-import type { BlockObjectRequest } from '@notionhq/client/build/src/api-endpoints';
+import type { BlockObjectRequest, PageObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import { Job } from '../types';
 import 'dotenv/config';
+
+export interface NotionJobStatus {
+  pageId: string;
+  sourceJobId: string;
+  applicationStatus: string;
+}
 
 const notionToken = process.env.NOTION_TOKEN;
 const databaseId = process.env.NOTION_DATABASE_ID;
@@ -12,6 +18,18 @@ if (!notionToken) { throw new Error('NOTION_TOKEN is not configured'); }
 if (!databaseId) { throw new Error('NOTION_DATABASE_ID is not configured'); }
 
 const notion = new Client({ auth: notionToken });
+
+async function getDataSourceId(): Promise<string> {
+  const database = await notion.databases.retrieve({
+    database_id: databaseId as string,
+  });
+
+  if (!('data_sources' in database) || database.data_sources.length === 0) {
+    throw new Error('No data source found for Notion database');
+  }
+
+  return database.data_sources[0].id;
+}
 
 /**
  * Split text into 2000-character chunks to satisfy Notion rich_text block limits.
@@ -88,6 +106,7 @@ export async function createNotionJob(job: Job) {
     'Cover letter': { rich_text: toRichText(job.coverLetter) },
     Source: notionSourceName ? { select: { name: notionSourceName } } : { select: null },
     Status: { status: { name: notionStatusName } },
+    'Application status': { select: { name: job.applicationStatus } },
     'Date found': job.dateFound ? { date: { start: job.dateFound } } : { date: null },
     'Job URL': job.url ? { url: job.url } : { url: null },
     'Application URL': job.applicationUrl ? { url: job.applicationUrl } : { url: null },
@@ -105,5 +124,40 @@ export async function createNotionJob(job: Job) {
       },
       ...descriptionToBlocks(job.description),
     ],
+  });
+}
+
+export async function getNotionJobStatuses(): Promise<NotionJobStatus[]> {
+  const dataSourceId = await getDataSourceId();
+
+  const response = await notion.dataSources.query({
+    data_source_id: dataSourceId,
+  });
+
+  return response.results
+    .filter((page): page is PageObjectResponse => 'properties' in page)
+    .map((page) => {
+      const properties = page.properties;
+
+      const sourceJobIdProperty = properties['Source job ID'];
+      const applicationStatusProperty = properties['Application status'];
+
+      const sourceJobId =
+      sourceJobIdProperty?.type === 'rich_text'
+        ? sourceJobIdProperty.rich_text
+            .map((item) => item.plain_text)
+            .join('')
+        : '';
+
+      const applicationStatus =
+        applicationStatusProperty?.type === 'select'
+          ? applicationStatusProperty.select?.name ?? ''
+          : '';
+
+      return {
+      pageId: page.id,
+      sourceJobId,
+      applicationStatus,
+    };
   });
 }

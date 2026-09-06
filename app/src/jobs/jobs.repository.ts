@@ -1,7 +1,7 @@
 // SQLite persistence layer
 
 import { getDb } from '../db/database';
-import { Job, JobStatus } from '../types';
+import { Job, JobStatus, ApplicationStatus } from '../types';
 
 function now(): string {
   return new Date().toISOString();
@@ -23,6 +23,7 @@ function rowToJob(row: any): Job {
     fitExplanation: row.fit_explanation ?? null,
     coverLetter: row.cover_letter ?? null,
     status: row.status,
+    applicationStatus: row.application_status,
     applicationUrl: row.application_url ?? null,
     notes: row.notes ?? null,
     createdAt: row.created_at,
@@ -45,11 +46,13 @@ export function insertSqliteJob(job: Job): { inserted: boolean; id?: number } {
       INSERT OR IGNORE INTO jobs
         (source, source_job_id, title, company, location, url,
          description, date_posted, date_found, fit_score, fit_explanation,
-         status, application_url, notes, created_at, updated_at)
+         cover_letter, status, application_status, application_url, notes,
+         created_at, updated_at)
       VALUES
         (@source, @source_job_id, @title, @company, @location, @url,
          @description, @date_posted, @date_found, @fit_score, @fit_explanation,
-         @status, @application_url, @notes, @created_at, @updated_at)
+         @cover_letter, @status, @application_status, @application_url, @notes,
+         @created_at, @updated_at)
     `)
     .run({
       source: job.source,
@@ -65,6 +68,7 @@ export function insertSqliteJob(job: Job): { inserted: boolean; id?: number } {
       fit_explanation: job.fitExplanation,
       cover_letter: job.coverLetter ?? null,
       status: job.status,
+      application_status: job.applicationStatus,
       application_url: job.applicationUrl ?? null,
       notes: job.notes ?? null,
       created_at: job.createdAt || ts,
@@ -83,6 +87,19 @@ export function findById(id: number): Job | undefined {
   const row = getDb()
     .prepare('SELECT * FROM jobs WHERE id = ?')
     .get(id);
+  return row ? rowToJob(row) : undefined;
+}
+
+export function findBySourceJobId(
+  source: string,
+  sourceJobId: string,
+): Job | undefined {
+  const row = getDb()
+    .prepare(
+      'SELECT * FROM jobs WHERE source = ? AND source_job_id = ? LIMIT 1'
+    )
+    .get(source, sourceJobId);
+
   return row ? rowToJob(row) : undefined;
 }
 
@@ -178,4 +195,15 @@ export function updateEvaluation(
       now(),
       id,
     );
+}
+
+export function updateApplicationStatus(
+  id: number,
+  applicationStatus: ApplicationStatus,
+): void {
+  getDb()
+    .prepare(
+      'UPDATE jobs SET application_status = ?, updated_at = ? WHERE id = ?'
+    )
+    .run(applicationStatus, now(), id);
 }

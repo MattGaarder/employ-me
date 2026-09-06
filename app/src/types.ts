@@ -18,6 +18,17 @@ export const ALL_STATUSES: JobStatus[] = [
   'APPROVED', 'REJECTED', 'SKIPPED', 'EXPIRED', 'FAILED',
 ];
 
+// ─── Application status ──────────────────────────────────────────────────────
+
+export type ApplicationStatus =
+  | 'NOT_READY'
+  | 'QUEUED';
+
+export const ALL_APPLICATION_STATUSES: ApplicationStatus[] = [
+  'NOT_READY',
+  'QUEUED',
+];
+
 // ─── Canonical Job object ───────────────────────────────────────────────────
 
 export interface Job {
@@ -35,6 +46,7 @@ export interface Job {
   fitExplanation: string | null;
   coverLetter: string | null;
   status: JobStatus;
+  applicationStatus: ApplicationStatus;
   applicationUrl: string | null;
   notes: string | null;
   createdAt: string;
