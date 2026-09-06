@@ -29,6 +29,53 @@ export const ALL_APPLICATION_STATUSES: ApplicationStatus[] = [
   'QUEUED',
 ];
 
+export type ApplicationRunStatus =
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'COMPLETE'
+  | 'ERROR'
+  | 'TIMEOUT'
+  | 'HUMAN_REQUIRED'
+  | 'CANCELLED';
+
+export const ALL_APPLICATION_RUN_STATUSES: ApplicationRunStatus[] = [
+  'QUEUED',
+  'RUNNING',
+  'COMPLETE',
+  'ERROR',
+  'TIMEOUT',
+  'HUMAN_REQUIRED',
+  'CANCELLED',
+];
+
+// ─── Canonical Application Run object ───────────────────────────────────────
+
+export interface ApplicationRun {
+  id?: number;
+  jobId: number;
+  attemptNumber: number;
+
+  startedAt: string | null;
+  finishedAt: string | null;
+  durationSeconds: number | null;
+
+  status: ApplicationRunStatus;
+
+  browserUseVersion: string | null;
+  llmModel: string | null;
+
+  currentStep: number | null;
+  stepsCompleted: number | null;
+
+  finalResult: string | null;
+  errorMessage: string | null;
+
+  logFile: string | null;
+  historyFile: string | null;
+
+  createdAt: string;
+}
+
 // ─── Canonical Job object ───────────────────────────────────────────────────
 
 export interface Job {

@@ -34,4 +34,25 @@ export const SCHEMA_SQL = `
     status         TEXT,
     error          TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS application_runs (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id                INTEGER NOT NULL,
+    attempt_number        INTEGER NOT NULL,
+    started_at            TEXT,
+    finished_at           TEXT,
+    duration_seconds      REAL,
+    status                TEXT NOT NULL,
+    browser_use_version   TEXT,
+    llm_model             TEXT,
+    current_step          INTEGER,
+    steps_completed       INTEGER,
+    final_result          TEXT,
+    error_message         TEXT,
+    log_file              TEXT,
+    history_file          TEXT,
+    created_at            TEXT NOT NULL,
+    FOREIGN KEY (job_id) REFERENCES jobs(id)
+);
 `;
+

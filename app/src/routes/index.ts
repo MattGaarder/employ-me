@@ -5,6 +5,10 @@ import {
   importJobsHandler,
 } from '../jobs/jobs.controller';
 
+import {
+  startApplicationRunHandler,
+} from '../application-runs/application-runs.controller';
+
 const router = Router();
 
 router.get('/', (_req, res) => {
@@ -24,5 +28,11 @@ router.get('/runs', (_req, res) => {
     runs: [],
   });
 });
+
+// Application run execution
+router.post(
+  '/application-runs/:id/start',
+  startApplicationRunHandler,
+);
 
 export default router;

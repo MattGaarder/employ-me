@@ -26,13 +26,50 @@ export function getDb(): Database.Database {
   // Create tables if they don't exist (idempotent)
   db.exec(SCHEMA_SQL);
 
-  // Lightweight migration: add application_status if it was added after initial DB creation
+  // Lightweight migrations for columns added after initial DB creation
+
+  // jobs.application_status
   const hasAppStatus = (db.prepare(
     `SELECT 1 FROM pragma_table_info('jobs') WHERE name = 'application_status'`
   ).get() as any);
+
   if (!hasAppStatus) {
-    db.exec(`ALTER TABLE jobs ADD COLUMN application_status TEXT NOT NULL DEFAULT 'NOT_READY'`);
+    db.exec(`
+      ALTER TABLE jobs
+      ADD COLUMN application_status TEXT NOT NULL DEFAULT 'NOT_READY'
+    `);
+
     console.log('[db] Added jobs.application_status column');
+  }
+
+  // application_runs columns
+  const applicationRunColumns = db
+    .prepare(`PRAGMA table_info(application_runs)`)
+    .all() as { name: string }[];
+
+  const existingApplicationRunColumns = new Set(
+    applicationRunColumns.map(column => column.name)
+  );
+
+  const applicationRunMigrations = [
+    ['duration_seconds', 'REAL'],
+    ['browser_use_version', 'TEXT'],
+    ['llm_model', 'TEXT'],
+    ['current_step', 'INTEGER'],
+    ['steps_completed', 'INTEGER'],
+    ['final_result', 'TEXT'],
+    ['log_file', 'TEXT'],
+    ['history_file', 'TEXT'],
+  ] as const;
+
+  for (const [column, type] of applicationRunMigrations) {
+    if (!existingApplicationRunColumns.has(column)) {
+      db.exec(
+        `ALTER TABLE application_runs ADD COLUMN ${column} ${type}`
+      );
+
+      console.log(`[db] Added application_runs.${column} column`);
+    }
   }
 
   console.log(`[db] SQLite database ready: ${dbPath}`);
