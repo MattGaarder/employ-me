@@ -128,15 +128,37 @@ export function updateApplicationRunProgress(
     );
 }
 
+
 export function completeApplicationRun(
   id: number,
   finishedAt: string,
-  durationSeconds: number,
   stepsCompleted: number,
   finalResult: string | null,
   logFile: string | null,
   historyFile: string | null,
-): void {
+): number {
+  const row = getDb()
+    .prepare(`
+      SELECT started_at
+      FROM application_runs
+      WHERE id = ?
+    `)
+    .get(id) as { started_at: string | null } | undefined;
+
+  if (!row) {
+    throw new Error(`Application run ${id} not found`);
+  }
+
+  if (!row.started_at) {
+    throw new Error(
+      `Application run ${id} has no started_at timestamp`,
+    );
+  }
+
+  const durationSeconds =
+    (new Date(finishedAt).getTime() -
+      new Date(row.started_at).getTime()) / 1000;
+
   getDb()
     .prepare(`
       UPDATE application_runs
@@ -160,16 +182,40 @@ export function completeApplicationRun(
       historyFile,
       id,
     );
+
+  return durationSeconds;
 }
+
 
 export function failApplicationRun(
   id: number,
   finishedAt: string,
-  durationSeconds: number,
   errorMessage: string,
   logFile: string | null,
   historyFile: string | null,
-): void {
+): number {
+  const row = getDb()
+    .prepare(`
+      SELECT started_at
+      FROM application_runs
+      WHERE id = ?
+    `)
+    .get(id) as { started_at: string | null } | undefined;
+
+  if (!row) {
+    throw new Error(`Application run ${id} not found`);
+  }
+
+  if (!row.started_at) {
+    throw new Error(
+      `Application run ${id} has no started_at timestamp`,
+    );
+  }
+
+  const durationSeconds =
+    (new Date(finishedAt).getTime() -
+      new Date(row.started_at).getTime()) / 1000;
+
   getDb()
     .prepare(`
       UPDATE application_runs
@@ -191,7 +237,10 @@ export function failApplicationRun(
       historyFile,
       id,
     );
+
+  return durationSeconds;
 }
+
 
 export function findApplicationRunsByJobId(
   jobId: number,
@@ -220,4 +269,76 @@ export function getNextApplicationAttemptNumber(
     .get(jobId) as { max_attempt: number | null };
 
   return (row.max_attempt ?? 0) + 1;
+}
+
+export interface ClaimedApplication {
+  runId: number;
+  job: {
+    id: number;
+    title: string;
+    company: string;
+    applicationUrl: string;
+  };
+}
+
+export function claimNextQueuedApplication(): ClaimedApplication | null {
+  const db = getDb();
+
+  const claim = db.transaction(() => {
+    const row = db
+      .prepare(`
+        SELECT
+          id,
+          title,
+          company,
+          application_url
+        FROM jobs
+        WHERE application_status = 'QUEUED'
+          AND application_url IS NOT NULL
+        ORDER BY date_found ASC
+        LIMIT 1
+      `)
+      .get() as {
+        id: number;
+        title: string;
+        company: string;
+        application_url: string;
+      } | undefined;
+
+    if (!row) {
+      return null;
+    }
+
+    const attemptNumber = getNextApplicationAttemptNumber(row.id);
+
+    const run = createApplicationRun(
+      row.id,
+      attemptNumber,
+    );
+
+    db
+      .prepare(`
+        UPDATE jobs
+        SET
+          application_status = 'RUNNING',
+          updated_at = ?
+        WHERE id = ?
+      `)
+      .run(
+        now(),
+        row.id,
+      );
+
+    return {
+      runId: run.id!,
+      job: {
+        id: row.id,
+        title: row.title,
+        company: row.company,
+        applicationUrl: row.application_url,
+      },
+    };
+  });
+
+  return claim();
 }
