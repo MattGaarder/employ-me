@@ -4,6 +4,7 @@ import {
   startApplicationRun,
   updateApplicationRunProgress,
   completeApplicationRun,
+  cancelApplicationRun,
   failApplicationRun,
   findApplicationRunsByJobId,
   claimNextQueuedApplication,
@@ -138,6 +139,7 @@ export function completeApplicationRunHandler(
 }
 
 
+
 // ─── Fail application run ───────────────────────────────────────────────────
 
 
@@ -190,6 +192,57 @@ export function failApplicationRunHandler(
     durationSeconds,
     errorMessage,
   });
+}
+
+// ─── Cancel application run ─────────────────────────────────────────────────
+
+export function cancelApplicationRunHandler(
+  req: Request,
+  res: Response,
+): void {
+  const runId = Number(req.params.id);
+
+  if (!Number.isInteger(runId)) {
+    res.status(400).json({
+      ok: false,
+      error: 'Invalid application run ID',
+    });
+    return;
+  }
+
+  const {
+    logFile,
+    historyFile,
+  } = req.body;
+
+  const finishedAt = new Date().toISOString();
+
+  try {
+    const durationSeconds = cancelApplicationRun(
+      runId,
+      finishedAt,
+      logFile ?? null,
+      historyFile ?? null,
+    );
+
+    res.json({
+      ok: true,
+      runId,
+      status: 'CANCELLED',
+      finishedAt,
+      durationSeconds,
+    });
+  } catch (error) {
+    console.error(
+      `[application-runs] Failed to cancel application run ${runId}:`,
+      error,
+    );
+
+    res.status(500).json({
+      ok: false,
+      error: 'Failed to cancel application run',
+    });
+  }
 }
 
 // ─── Get application runs for a job ──────────────────────────────────────────

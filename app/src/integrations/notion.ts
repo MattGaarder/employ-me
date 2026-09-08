@@ -44,18 +44,6 @@ function toRichText(text: string | null | undefined): Array<{ text: { content: s
   return chunks;
 }
 
-const STATUS_MAP: Record<string, string> = {
-  DISCOVERED: 'Discovered',
-  FETCHED: 'Discovered',
-  EVALUATED: 'Evaluated',
-  REVIEW: 'In review',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  SKIPPED: 'Skipped',
-  EXPIRED: 'Expired',
-  FAILED: 'Failed',
-};
-
 function paragraphBlock(text: string): BlockObjectRequest {
   return {
     object: 'block',
@@ -89,7 +77,6 @@ function descriptionToBlocks(
 }
 
 export async function createNotionJob(job: Job) {
-  const notionStatusName = STATUS_MAP[job.status] || 'Discovered';
   const notionSourceName =
     job.applicationUrl && job.applicationUrl.trim() !== ''
       ? 'External'
@@ -105,8 +92,7 @@ export async function createNotionJob(job: Job) {
     'Fit explanation': { rich_text: toRichText(job.fitExplanation) },
     'Cover letter': { rich_text: toRichText(job.coverLetter) },
     Source: notionSourceName ? { select: { name: notionSourceName } } : { select: null },
-    Status: { status: { name: notionStatusName } },
-    'Application status': { select: { name: job.applicationStatus } },
+    'Application status': { select: {name: job.applicationStatus,} },
     'Date found': job.dateFound ? { date: { start: job.dateFound } } : { date: null },
     'Job URL': job.url ? { url: job.url } : { url: null },
     'Application URL': job.applicationUrl ? { url: job.applicationUrl } : { url: null },

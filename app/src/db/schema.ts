@@ -14,7 +14,6 @@ export const SCHEMA_SQL = `
     fit_score       INTEGER,
     fit_explanation     TEXT,
     cover_letter    TEXT,
-    status          TEXT    NOT NULL DEFAULT 'DISCOVERED',
     application_status TEXT NOT NULL DEFAULT 'NOT_READY',
     application_url TEXT,
     notes           TEXT,

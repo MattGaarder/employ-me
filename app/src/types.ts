@@ -1,23 +1,5 @@
 // Pipeline type definitions
 
-// ─── Job status lifecycle ───────────────────────────────────────────────────
-
-export type JobStatus =
-  | 'DISCOVERED'  // found in search, no description yet
-  | 'FETCHED'     // full description retrieved
-  | 'EVALUATED'      // fit score calculated (below review threshold)
-  | 'REVIEW'      // scored, above threshold — awaiting human decision
-  | 'APPROVED'    // human chose to apply
-  | 'REJECTED'    // human said no
-  | 'SKIPPED'     // auto-filtered (score too low)
-  | 'EXPIRED'     // listing no longer available
-  | 'FAILED';     // scraping or processing error
-
-export const ALL_STATUSES: JobStatus[] = [
-  'DISCOVERED', 'FETCHED', 'EVALUATED', 'REVIEW',
-  'APPROVED', 'REJECTED', 'SKIPPED', 'EXPIRED', 'FAILED',
-];
-
 // ─── Application status ──────────────────────────────────────────────────────
 
 export type ApplicationStatus =
@@ -94,7 +76,6 @@ export interface Job {
   fitScore: number | null;
   fitExplanation: string | null;
   coverLetter: string | null;
-  status: JobStatus;
   applicationStatus: ApplicationStatus;
   applicationUrl: string | null;
   notes: string | null;

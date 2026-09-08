@@ -1,7 +1,7 @@
 // SQLite persistence layer
 
 import { getDb } from '../db/database';
-import { Job, JobStatus, ApplicationStatus } from '../types';
+import { Job, ApplicationStatus } from '../types';
 
 function now(): string {
   return new Date().toISOString();
@@ -22,7 +22,7 @@ function rowToJob(row: any): Job {
     fitScore: row.fit_score ?? null,
     fitExplanation: row.fit_explanation ?? null,
     coverLetter: row.cover_letter ?? null,
-    status: row.status,
+
     applicationStatus: row.application_status,
     applicationUrl: row.application_url ?? null,
     notes: row.notes ?? null,
@@ -46,12 +46,12 @@ export function insertSqliteJob(job: Job): { inserted: boolean; id?: number } {
       INSERT OR IGNORE INTO jobs
         (source, source_job_id, title, company, location, url,
          description, date_posted, date_found, fit_score, fit_explanation,
-         cover_letter, status, application_status, application_url, notes,
+         cover_letter, application_status, application_url, notes,
          created_at, updated_at)
       VALUES
         (@source, @source_job_id, @title, @company, @location, @url,
          @description, @date_posted, @date_found, @fit_score, @fit_explanation,
-         @cover_letter, @status, @application_status, @application_url, @notes,
+         @cover_letter, @application_status, @application_url, @notes,
          @created_at, @updated_at)
     `)
     .run({
@@ -67,7 +67,6 @@ export function insertSqliteJob(job: Job): { inserted: boolean; id?: number } {
       fit_score: job.fitScore ?? null,
       fit_explanation: job.fitExplanation,
       cover_letter: job.coverLetter ?? null,
-      status: job.status,
       application_status: job.applicationStatus,
       application_url: job.applicationUrl ?? null,
       notes: job.notes ?? null,
@@ -113,10 +112,6 @@ export function findAll(filters: JobFilters = {}): Job[] {
   const conditions: string[] = ['1=1'];
   const params: Record<string, unknown> = {};
 
-  if (filters.status !== undefined) {
-    conditions.push('status = @status');
-    params.status = filters.status;
-  }
   if (filters.minScore !== undefined) {
     conditions.push('fit_score >= @minScore');
     params.minScore = filters.minScore;
@@ -140,28 +135,23 @@ export function findAll(filters: JobFilters = {}): Job[] {
 
 // ─── Update ───────────────────────────────────────────────────────────────────
 
-export function updateDescription(id: number, description: string, status: JobStatus): void {
+export function updateDescription(id: number, description: string): void {
   getDb()
-    .prepare('UPDATE jobs SET description = ?, status = ?, updated_at = ? WHERE id = ?')
-    .run(description, status, now(), id);
+    .prepare('UPDATE jobs SET description = ?, updated_at = ? WHERE id = ?')
+    .run(description, now(), id);
 }
 
 export function updateScore(
   id: number,
   fitScore: number,
   fitExplanation: string,
-  status: JobStatus,
+
 ): void {
   getDb()
     .prepare('UPDATE jobs SET fit_score = ?, fit_explanation = ?, status = ?, updated_at = ? WHERE id = ?')
-    .run(fitScore, fitExplanation, status, now(), id);
+    .run(fitScore, fitExplanation, now(), id);
 }
 
-export function updateStatus(id: number, status: JobStatus): void {
-  getDb()
-    .prepare('UPDATE jobs SET status = ?, updated_at = ? WHERE id = ?')
-    .run(status, now(), id);
-}
 
 export function updateNotes(id: number, notes: string): void {
   getDb()
@@ -174,7 +164,6 @@ export function updateEvaluation(
   fitScore: number,
   fitExplanation: string,
   coverLetter: string,
-  status: JobStatus,
 ): void {
   getDb()
     .prepare(`
@@ -191,7 +180,6 @@ export function updateEvaluation(
       fitScore,
       fitExplanation,
       coverLetter,
-      status,
       now(),
       id,
     );

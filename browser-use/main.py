@@ -262,6 +262,25 @@ def fail_application_run(
     print(data)
     print("============================================\n")
 
+def cancel_application_run(
+    log_file: str | None,
+    history_file: str | None,
+):
+    response = requests.post(
+        f"{API_BASE_URL}/application-runs/{RUN_ID}/cancel",
+        json={
+            "logFile": log_file,
+            "historyFile": history_file,
+        },
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    print("\n========== APPLICATION RUN CANCELLED ==========")
+    print(data)
+    print("===============================================\n")
 
 async def main():
     global RUN_ID
@@ -391,16 +410,35 @@ Stop before the final application submission.
             history_file=str(HISTORY_FILE),
         )
 
+    except KeyboardInterrupt:
+
+        print("\n========== BROWSER USE CANCELLED ==========\n")
+        print("Ctrl+C detected. Cancelling application run...")
+
+        try:
+            cancel_application_run(
+                log_file=str(LOG_FILE) if LOG_FILE else None,
+                history_file=(
+                    str(HISTORY_FILE)
+                    if HISTORY_FILE and HISTORY_FILE.exists()
+                    else None
+                ),
+            )
+        except Exception as cancel_error:
+            print(
+                f"[cancel] Failed to update application run: {cancel_error}"
+            )
+
+        print("\n============================================\n")
+
+        raise
+
     except Exception as error:
 
         print("\n========== BROWSER USE ERROR ==========\n")
         print(error)
         print("\n=======================================\n")
 
-                # Try to preserve whatever history is available if the
-        # agent failed after producing a result.
-        #
-        # If `result` exists, save it.
         if "result" in locals():
             try:
                 HISTORY_FILE.write_text(

@@ -186,6 +186,78 @@ export function completeApplicationRun(
   return durationSeconds;
 }
 
+export function cancelApplicationRun(
+  id: number,
+  finishedAt: string,
+  logFile: string | null,
+  historyFile: string | null,
+): number {
+  const db = getDb();
+
+  const cancel = db.transaction(() => {
+    const row = db
+      .prepare(`
+        SELECT
+          job_id,
+          started_at
+        FROM application_runs
+        WHERE id = ?
+      `)
+      .get(id) as {
+        job_id: number;
+        started_at: string | null;
+      } | undefined;
+
+    if (!row) {
+      throw new Error(`Application run ${id} not found`);
+    }
+
+    if (!row.started_at) {
+      throw new Error(
+        `Application run ${id} has no started_at timestamp`,
+      );
+    }
+
+    const durationSeconds =
+      (new Date(finishedAt).getTime() -
+        new Date(row.started_at).getTime()) /
+      1000;
+
+    db.prepare(`
+      UPDATE application_runs
+      SET
+        status = ?,
+        finished_at = ?,
+        duration_seconds = ?,
+        log_file = ?,
+        history_file = ?
+      WHERE id = ?
+    `).run(
+      'CANCELLED',
+      finishedAt,
+      durationSeconds,
+      logFile,
+      historyFile,
+      id,
+    );
+
+    db.prepare(`
+      UPDATE jobs
+      SET
+        application_status = 'NOT_READY',
+        updated_at = ?
+      WHERE id = ?
+    `).run(
+      finishedAt,
+      row.job_id,
+    );
+
+    return durationSeconds;
+  });
+
+  return cancel();
+}
+
 
 export function failApplicationRun(
   id: number,

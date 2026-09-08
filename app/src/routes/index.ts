@@ -10,6 +10,7 @@ import {
   startApplicationRunHandler,
   updateApplicationRunProgressHandler,
   completeApplicationRunHandler,
+  cancelApplicationRunHandler,
   failApplicationRunHandler,
   getApplicationRunsByJobIdHandler,
   claimNextQueuedApplicationHandler,
@@ -65,6 +66,8 @@ router.post(
   '/application-runs/:id/complete',
   completeApplicationRunHandler,
 );
+
+router.post('/application-runs/:id/cancel', cancelApplicationRunHandler);
 
 // Mark an application run as failed
 router.post(

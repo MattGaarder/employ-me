@@ -83,3 +83,15 @@ export async function syncNotionApplicationStatuses() {
     skipped,
   };
 }
+
+async function main() {
+  const result = await syncNotionApplicationStatuses();
+
+  console.log('[notion-sync] Complete');
+  console.log(result);
+}
+
+main().catch((error) => {
+  console.error('[notion-sync] Failed:', error);
+  process.exit(1);
+});
