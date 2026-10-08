@@ -13,8 +13,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test-notion": "tsx src/test-notion.ts",
-    "sync:notion": "ts-node src/services/notion-sync.ts",
-    "apply": "npm run sync:notion && python ../browser-use/main.py"
+    "sync:notion": "ts-node src/services/notionsql-sync.ts",
+    "sync:notion:reverse": "ts-node src/services/sqlnotion-sync.ts",
+    "apply": "npm run sync:notion && ../browser-use/.venv/bin/python ../browser-use/main.py"
   },
   "dependencies": {
     "@notionhq/client": "^5.26.0",

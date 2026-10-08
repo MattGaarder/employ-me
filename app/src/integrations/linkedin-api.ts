@@ -69,7 +69,6 @@ export async function searchJobs(params: SearchParams): Promise<Job[]> {
       fitScore: null,
       fitExplanation: null,
       coverLetter: null,
-      status: 'DISCOVERED',
       applicationStatus: 'NOT_READY',
       applicationUrl: null,
       notes: null,
@@ -131,7 +130,6 @@ export async function getJobDetails(jobOrId: Job | string): Promise<Job> {
       fitScore: null,
       fitExplanation: null,
       coverLetter: null,
-      status: 'FETCHED',
       applicationStatus: 'NOT_READY',
       applicationUrl: details.applicationUrl || null,
       notes: null,
@@ -148,7 +146,6 @@ export async function getJobDetails(jobOrId: Job | string): Promise<Job> {
   jobOrId.description = details.description || null;
   jobOrId.applicationUrl = details.applicationUrl || jobOrId.applicationUrl || null;
   jobOrId.datePosted = details.datePosted || jobOrId.datePosted || null;
-  jobOrId.status = 'FETCHED';
   jobOrId.updatedAt = now;
 
   return jobOrId;

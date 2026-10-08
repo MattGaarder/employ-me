@@ -19,7 +19,7 @@ export interface ImportJobsParams {
 }
 
 export async function importJobs(
-  params: ImportJobsParams,
+  params: ImportJobsParams, 
 ): Promise<ImportResult> {
   const runId = insertRun({
     run_at: new Date().toISOString(),
@@ -105,14 +105,12 @@ export async function importJobs(
           evaluation.fitScore,
           evaluation.fitExplanation,
           evaluation.coverLetter,
-          'EVALUATED',
         );
 
         // Keep the in-memory Job object in sync
         job.fitScore = evaluation.fitScore;
         job.fitExplanation = evaluation.fitExplanation;
         job.coverLetter = evaluation.coverLetter;
-        job.status = 'EVALUATED';
 
         console.log(`[ai] Evaluation complete — score: ${evaluation.fitScore}/100`);
       } catch (aiErr) {

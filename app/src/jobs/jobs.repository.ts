@@ -103,7 +103,6 @@ export function findBySourceJobId(
 }
 
 export interface JobFilters {
-  status?: string;
   minScore?: number;
   source?: string;
 }
@@ -145,13 +144,11 @@ export function updateScore(
   id: number,
   fitScore: number,
   fitExplanation: string,
-
 ): void {
   getDb()
-    .prepare('UPDATE jobs SET fit_score = ?, fit_explanation = ?, status = ?, updated_at = ? WHERE id = ?')
+    .prepare('UPDATE jobs SET fit_score = ?, fit_explanation = ?, updated_at = ? WHERE id = ?')
     .run(fitScore, fitExplanation, now(), id);
 }
-
 
 export function updateNotes(id: number, notes: string): void {
   getDb()
@@ -172,7 +169,6 @@ export function updateEvaluation(
         fit_score = ?,
         fit_explanation = ?,
         cover_letter = ?,
-        status = ?,
         updated_at = ?
       WHERE id = ?
     `)

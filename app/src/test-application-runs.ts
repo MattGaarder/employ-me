@@ -50,7 +50,6 @@ async function main() {
   completeApplicationRun(
     run.id!,
     finishedAt,
-    durationSeconds,
     3,
     'Test application completed successfully',
     null,

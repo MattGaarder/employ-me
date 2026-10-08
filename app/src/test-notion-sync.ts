@@ -1,4 +1,4 @@
-import { syncNotionApplicationStatuses } from './services/notion-sync';
+import { syncNotionApplicationStatuses } from './services/notionsql-sync';
 
 async function main() {
   const result = await syncNotionApplicationStatuses();

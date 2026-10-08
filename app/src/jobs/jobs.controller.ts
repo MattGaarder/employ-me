@@ -7,9 +7,6 @@ import { importJobs } from './jobs.service';
 export function listJobs(req: Request, res: Response): void {
   try {
     const jobs = findAll({
-      status: typeof req.query.status === 'string'
-        ? req.query.status
-        : undefined,
       source: typeof req.query.source === 'string'
         ? req.query.source
         : undefined,

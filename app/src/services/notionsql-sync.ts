@@ -84,6 +84,7 @@ export async function syncNotionApplicationStatuses() {
   };
 }
 
+
 async function main() {
   const result = await syncNotionApplicationStatuses();
 

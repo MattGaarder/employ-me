@@ -147,3 +147,19 @@ export async function getNotionJobStatuses(): Promise<NotionJobStatus[]> {
     };
   });
 }
+
+export async function updateNotionApplicationStatus(
+  pageId: string,
+  applicationStatus: string,
+) {
+  return notion.pages.update({
+    page_id: pageId,
+    properties: {
+      'Application status': {
+        select: {
+          name: applicationStatus,
+        },
+      },
+    },
+  });
+}

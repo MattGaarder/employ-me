@@ -4,6 +4,7 @@ import json
 import sys
 import os
 import threading
+import subprocess
 from pathlib import Path
 
 import requests
@@ -221,6 +222,7 @@ def complete_application_run(
     log_file: str | None,
     history_file: str | None,
 ):
+
     response = requests.post(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/complete",
         json={
@@ -288,6 +290,8 @@ async def main():
     claimed = claim_next_application()
 
     RUN_ID = claimed["runId"]
+    os.environ['EMPLOY_ME_RUN_ID'] = str(RUN_ID)
+    print(f"[debug] EMPLOY_ME_RUN_ID = {os.getenv('EMPLOY_ME_RUN_ID')}")
     job = claimed["job"]
 
     setup_run_files(RUN_ID)
@@ -408,6 +412,13 @@ Stop before the final application submission.
             final_result=str(result),
             log_file=str(LOG_FILE),
             history_file=str(HISTORY_FILE),
+        )
+
+        # Sync final SQLite application status back to Notion.
+        subprocess.run(
+            ["npm", "run", "sync:notion:reverse"],
+            cwd="../app",
+            check=True,
         )
 
     except KeyboardInterrupt:
