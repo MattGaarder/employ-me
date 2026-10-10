@@ -1,9 +1,9 @@
 
+import atexit
 import asyncio
 import json
 import sys
 import os
-import threading
 import subprocess
 from pathlib import Path
 
@@ -29,166 +29,225 @@ LOG_FILE = None
 def setup_run_files(run_id: int):
     global RUN_DIR, HISTORY_FILE, LOG_FILE
 
-    RUN_DIR = Path("runs") / str(run_id)
-    RUN_DIR.mkdir(parents=True, exist_ok=True)
+    # main.py lives in browser-use/ — write logs there too.
+    base = Path(__file__).parent / "runs" / str(run_id)
+    base.mkdir(parents=True, exist_ok=True)
 
-    HISTORY_FILE = RUN_DIR / "history.json"
-    LOG_FILE = RUN_DIR / "run.log"
+    RUN_DIR = base
+    HISTORY_FILE = base / "history.json"
+    LOG_FILE = base / "run.log"
+
 
 # ---------------------------------------------------------
-# Console logging
+# Tee stream — write to terminal AND log file simultaneously
 # ---------------------------------------------------------
 
-console_log_file = None
-console_log_thread = None
-console_log_stop = None
-console_stdout_fd = None
-console_stderr_fd = None
+class TeeStream:
+    """Wrap a stream so writes go to both the original stream and a log file."""
+
+    def __init__(self, original, log_file):
+        self._original = original
+        self._log = log_file
+
+    def write(self, data):
+        self._original.write(data)
+        try:
+            self._log.write(data)
+        except Exception:
+            pass
+        return len(data)
+
+    def flush(self):
+        self._original.flush()
+        try:
+            self._log.flush()
+        except Exception:
+            pass
+
+    def fileno(self):
+        return self._original.fileno()
+
+    def isatty(self):
+        return False
+
+    def __getattr__(self, name):
+        return getattr(self._original, name)
+
+
+_log_file_handle = None
+_original_stdout = None
+_original_stderr = None
 
 
 def start_console_logging():
     """
-    Capture everything written to stdout/stderr at the OS file-descriptor
-    level while still displaying it normally in the terminal.
-
-    Anything that appears in the console should therefore also appear
-    in runs/<run_id>/run.log.
+    Redirect sys.stdout / sys.stderr through a TeeStream so every print()
+    call is written to both the terminal and runs/<runId>/run.log.
     """
+    global _log_file_handle, _original_stdout, _original_stderr
 
-    global console_log_file
-    global console_log_thread
-    global console_log_stop
-    global console_stdout_fd
-    global console_stderr_fd
+    _log_file_handle = LOG_FILE.open("w", encoding="utf-8", buffering=1)
 
-    console_log_file = LOG_FILE.open(
-        "w",
-        encoding="utf-8",
-        buffering=1,
-    )
+    _original_stdout = sys.stdout
+    _original_stderr = sys.stderr
 
-    # Preserve the original terminal file descriptors.
-    console_stdout_fd = os.dup(1)
-    console_stderr_fd = os.dup(2)
+    sys.stdout = TeeStream(sys.stdout, _log_file_handle)
+    sys.stderr = TeeStream(sys.stderr, _log_file_handle)
 
-    # Create a pipe.
-    read_fd, write_fd = os.pipe()
-
-    # Redirect both stdout and stderr into the same pipe.
-    os.dup2(write_fd, 1)
-    os.dup2(write_fd, 2)
-
-    # The duplicated stdout/stderr descriptors now own the pipe.
-    os.close(write_fd)
-
-    console_log_stop = threading.Event()
-
-    def capture_console():
-        with os.fdopen(read_fd, "rb", closefd=True) as pipe:
-            while not console_log_stop.is_set():
-                data = os.read(pipe.fileno(), 8192)
-
-                if not data:
-                    break
-
-                # Write exactly what was written to the console
-                # to the run log.
-                console_log_file.buffer.write(data)
-                console_log_file.flush()
-
-                # Also write it back to the original terminal.
-                os.write(console_stdout_fd, data)
-
-    console_log_thread = threading.Thread(
-        target=capture_console,
-        name="console-log-capture",
-        daemon=True,
-    )
-
-    console_log_thread.start()
 
 def stop_console_logging():
-    """
-    Restore the original stdout/stderr file descriptors and close
-    the console capture resources.
-    """
+    """Restore sys.stdout / sys.stderr and close the log file."""
+    global _log_file_handle, _original_stdout, _original_stderr
 
-    global console_log_file
-    global console_log_thread
-    global console_log_stop
-    global console_stdout_fd
-    global console_stderr_fd
+    if _original_stdout is not None:
+        sys.stdout = _original_stdout
+        _original_stdout = None
 
-    if console_stdout_fd is None:
+    if _original_stderr is not None:
+        sys.stderr = _original_stderr
+        _original_stderr = None
+
+    if _log_file_handle is not None:
+        try:
+            _log_file_handle.flush()
+            _log_file_handle.close()
+        except Exception:
+            pass
+        _log_file_handle = None
+
+
+# ---------------------------------------------------------
+# Cancellation — guaranteed to run on any exit path
+# ---------------------------------------------------------
+
+_cancellation_done = False
+
+
+def _cancel_on_exit():
+    """
+    Cancel the current application run.
+
+    Called from:
+      - atexit handler  (covers sys.exit() from Browser Use's own signal handler)
+      - Browser Use's custom_exit_callback  (called just before it calls sys.exit())
+      - our own except KeyboardInterrupt block (if asyncio sees it first)
+
+    A flag prevents double-cancellation if more than one path fires.
+    """
+    global _cancellation_done
+
+    if _cancellation_done:
+        return
+    _cancellation_done = True
+
+    # Nothing to cancel if we never got past claim.
+    if RUN_ID is None:
         return
 
-    # Flush Python's normal stdout/stderr buffers first.
-    sys.stdout.flush()
-    sys.stderr.flush()
+    print("\n[cancel] Cancelling application run...", flush=True)
 
-    # Restore the original terminal stdout/stderr.
-    os.dup2(console_stdout_fd, 1)
-    os.dup2(console_stderr_fd, 2)
+    try:
+        cancel_application_run(
+            log_file=str(LOG_FILE) if LOG_FILE else None,
+            history_file=(
+                str(HISTORY_FILE)
+                if HISTORY_FILE and HISTORY_FILE.exists()
+                else None
+            ),
+        )
+        app_dir = Path(__file__).resolve().parent.parent / "app"
+        if (app_dir / "package.json").exists():
+            subprocess.run(
+                ["npm", "run", "sync:notion:reverse"],
+                cwd=str(app_dir),
+                check=False,
+            )
+    except Exception as exc:
+        print(f"[cancel] Failed to reach API or sync: {exc}", flush=True)
 
-    # Close our duplicated terminal descriptors.
-    os.close(console_stdout_fd)
-    os.close(console_stderr_fd)
+    stop_console_logging()
 
-    console_stdout_fd = None
-    console_stderr_fd = None
 
-    # Tell the capture thread to stop.
-    if console_log_stop is not None:
-        console_log_stop.set()
+# Register as atexit handler — fires on any clean sys.exit(), including
+# the one Browser Use calls from its own SIGINT handler.
+atexit.register(_cancel_on_exit)
 
-    # Wait for the remaining pipe data to be written.
-    if console_log_thread is not None:
-        console_log_thread.join(timeout=2)
 
-    console_log_thread = None
-    console_log_stop = None
-
-    if console_log_file is not None:
-        console_log_file.flush()
-        console_log_file.close()
-        console_log_file = None
+# ---------------------------------------------------------
+# API helpers
+# ---------------------------------------------------------
 
 def claim_next_application():
-    response = requests.post(
-        f"{API_BASE_URL}/application-runs/claim"
-    )
+    """
+    Call POST /api/application-runs/claim.
+
+    Returns the claimed application data on success.
+    Prints a clear message and exits cleanly (code 0) when the queue is
+    empty or no job has an application URL.
+    Raises on unexpected errors.
+    """
+    response = requests.post(f"{API_BASE_URL}/application-runs/claim")
+
+    if response.status_code == 422:
+        data = response.json()
+        reason = data.get("reason", "UNKNOWN")
+        message = data.get("error", "Queue unavailable.")
+
+        print()
+        print("=" * 50)
+        if reason == "NO_QUEUED_JOBS":
+            print("  No queued applications")
+            print()
+            print("  No jobs have QUEUED status in SQLite.")
+            print("  To queue a job:")
+            print("    1. Open Notion and change a job's")
+            print("       'Application status' to QUEUED.")
+            print("    2. Run:  npm run apply")
+        elif reason == "NO_APPLICATION_URL":
+            print("  No application URL available")
+            print()
+            print(f"  {message}")
+            print("  To fix this:")
+            print("    Add an 'Application URL' to at least one")
+            print("    QUEUED job in Notion and run:  npm run apply")
+        else:
+            print(f"  Cannot claim application: {message}")
+        print("=" * 50)
+        print()
+
+        # Deregister the atexit cancel handler — nothing was claimed.
+        atexit.unregister(_cancel_on_exit)
+        sys.exit(0)
+
     response.raise_for_status()
 
     data = response.json()
 
     print("\n========== APPLICATION CLAIM ==========")
-    print(data)
+    print(f"  Run ID:  {data['runId']}")
+    print(f"  Job ID:  {data['job']['id']}")
+    print(f"  Title:   {data['job']['title']}")
+    print(f"  Company: {data['job']['company']}")
     print("=======================================\n")
 
     return data
+
 
 def start_application_run():
     response = requests.post(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/start"
     )
-
     response.raise_for_status()
-
     data = response.json()
-
     print("\n========== APPLICATION RUN START ==========")
     print(data)
     print("===========================================\n")
 
+
 async def report_step_start(agent):
     global current_step
-
     current_step += 1
-
-    print(
-        f"[progress] Browser Use STARTED step {current_step}"
-    )
-
+    print(f"[progress] Browser Use STARTED step {current_step}")
     response = requests.patch(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/progress",
         json={
@@ -196,15 +255,11 @@ async def report_step_start(agent):
             "stepsCompleted": current_step - 1,
         },
     )
-
     response.raise_for_status()
 
 
 async def report_step_end(agent):
-    print(
-        f"[progress] Browser Use COMPLETED step {current_step}"
-    )
-
+    print(f"[progress] Browser Use COMPLETED step {current_step}")
     response = requests.patch(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/progress",
         json={
@@ -212,7 +267,6 @@ async def report_step_end(agent):
             "stepsCompleted": current_step,
         },
     )
-
     response.raise_for_status()
 
 
@@ -222,7 +276,6 @@ def complete_application_run(
     log_file: str | None,
     history_file: str | None,
 ):
-
     response = requests.post(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/complete",
         json={
@@ -232,11 +285,8 @@ def complete_application_run(
             "historyFile": history_file,
         },
     )
-
     response.raise_for_status()
-
     data = response.json()
-
     print("\n========== APPLICATION RUN COMPLETE ==========")
     print(data)
     print("===============================================\n")
@@ -255,14 +305,12 @@ def fail_application_run(
             "historyFile": history_file,
         },
     )
-
     response.raise_for_status()
-
     data = response.json()
-
     print("\n========== APPLICATION RUN FAILED ==========")
     print(data)
     print("============================================\n")
+
 
 def cancel_application_run(
     log_file: str | None,
@@ -275,14 +323,16 @@ def cancel_application_run(
             "historyFile": history_file,
         },
     )
-
     response.raise_for_status()
-
     data = response.json()
-
     print("\n========== APPLICATION RUN CANCELLED ==========")
     print(data)
     print("===============================================\n")
+
+
+# ---------------------------------------------------------
+# Main
+# ---------------------------------------------------------
 
 async def main():
     global RUN_ID
@@ -290,9 +340,9 @@ async def main():
     claimed = claim_next_application()
 
     RUN_ID = claimed["runId"]
-    os.environ['EMPLOY_ME_RUN_ID'] = str(RUN_ID)
-    print(f"[debug] EMPLOY_ME_RUN_ID = {os.getenv('EMPLOY_ME_RUN_ID')}")
     job = claimed["job"]
+
+    os.environ["EMPLOY_ME_RUN_ID"] = str(RUN_ID)
 
     setup_run_files(RUN_ID)
     start_console_logging()
@@ -302,22 +352,15 @@ async def main():
     print(f"Title:           {job['title']}")
     print(f"Company:         {job['company']}")
     print(f"Application URL: {job['applicationUrl']}")
+    print(f"Log:             {LOG_FILE}")
     print("========================================\n")
 
-    form_details_path = Path(
-        "../app/src/ai/form-details.json"
-    )
+    form_details_path = Path(__file__).parent / "../app/src/ai/form-details.json"
 
-    with form_details_path.open(
-        "r",
-        encoding="utf-8",
-    ) as f:
+    with form_details_path.open("r", encoding="utf-8") as f:
         form_details = json.load(f)
 
-    candidate_data = json.dumps(
-        form_details,
-        indent=2,
-    )
+    candidate_data = json.dumps(form_details, indent=2)
 
     llm = ChatOllama(
         model="qwen3.5:latest",
@@ -379,11 +422,13 @@ Stop before the final application submission.
         available_file_paths=[
             "/Users/matteusgaarder/Desktop/Projects/employ-me/app/src/ai/GAARDER-CV.docx"
         ],
+        # Hook into Browser Use's own Ctrl+C exit path.
+        # This fires just before Browser Use calls sys.exit() on the second Ctrl+C.
+        custom_exit_callback=_cancel_on_exit,
     )
 
     try:
-
-        # Tell employ-me that Browser Use is starting.
+        # Tell employ-me that Browser Use is starting → RUNNING.
         start_application_run()
 
         print("\n========== BROWSER USE START ==========\n")
@@ -394,11 +439,7 @@ Stop before the final application submission.
         )
 
         HISTORY_FILE.write_text(
-            json.dumps(
-                result,
-                default=str,
-                indent=2,
-            ),
+            json.dumps(result, default=str, indent=2),
             encoding="utf-8",
         )
 
@@ -407,6 +448,8 @@ Stop before the final application submission.
         print(f"Log saved to:     {LOG_FILE}")
         print("===========================================\n")
 
+        # Mark the run as complete — deregister cancel atexit before calling.
+        _cancellation_done_set()
         complete_application_run(
             steps_completed=current_step,
             final_result=str(result),
@@ -417,60 +460,40 @@ Stop before the final application submission.
         # Sync final SQLite application status back to Notion.
         subprocess.run(
             ["npm", "run", "sync:notion:reverse"],
-            cwd="../app",
+            cwd=str(Path(__file__).parent / "../app"),
             check=True,
         )
 
     except KeyboardInterrupt:
-
+        # asyncio may surface the interrupt here before Browser Use's handler
+        # gets a chance. _cancel_on_exit() handles deduplication.
         print("\n========== BROWSER USE CANCELLED ==========\n")
-        print("Ctrl+C detected. Cancelling application run...")
-
-        try:
-            cancel_application_run(
-                log_file=str(LOG_FILE) if LOG_FILE else None,
-                history_file=(
-                    str(HISTORY_FILE)
-                    if HISTORY_FILE and HISTORY_FILE.exists()
-                    else None
-                ),
-            )
-        except Exception as cancel_error:
-            print(
-                f"[cancel] Failed to update application run: {cancel_error}"
-            )
-
-        print("\n============================================\n")
-
-        raise
+        _cancel_on_exit()
+        sys.exit(1)
 
     except Exception as error:
-
         print("\n========== BROWSER USE ERROR ==========\n")
         print(error)
         print("\n=======================================\n")
 
+        # Deregister cancel — we're going to call fail instead.
+        _cancellation_done_set()
+
         if "result" in locals():
             try:
                 HISTORY_FILE.write_text(
-                    json.dumps(
-                        result,
-                        default=str,
-                        indent=2,
-                    ),
+                    json.dumps(result, default=str, indent=2),
                     encoding="utf-8",
                 )
             except Exception as history_error:
-                print(
-                    f"[history] Failed to save history: {history_error}"
-                )
+                print(f"[history] Failed to save history: {history_error}")
 
         fail_application_run(
             error_message=str(error),
             log_file=str(LOG_FILE),
             history_file=(
                 str(HISTORY_FILE)
-                if HISTORY_FILE.exists()
+                if HISTORY_FILE and HISTORY_FILE.exists()
                 else None
             ),
         )
@@ -480,6 +503,11 @@ Stop before the final application submission.
     finally:
         stop_console_logging()
 
+
+def _cancellation_done_set():
+    """Mark cancellation as already handled so the atexit hook does nothing."""
+    global _cancellation_done
+    _cancellation_done = True
 
 
 if __name__ == "__main__":

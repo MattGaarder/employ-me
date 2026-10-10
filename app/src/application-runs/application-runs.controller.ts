@@ -275,21 +275,23 @@ export function claimNextQueuedApplicationHandler(
   res: Response,
 ): void {
   try {
-    const claimed = claimNextQueuedApplication();
+    const result = claimNextQueuedApplication();
 
-    if (!claimed) {
-      res.status(404).json({
+    if (!result.ok) {
+      // 422 Unprocessable: the request is valid but the queue can't be served
+      res.status(422).json({
         ok: false,
-        error: 'No queued applications available',
+        reason: result.reason,
+        error: result.message,
       });
       return;
     }
 
     res.json({
       ok: true,
-      runId: claimed.runId,
-      jobId: claimed.job.id,
-      job: claimed.job,
+      runId: result.runId,
+      jobId: result.job.id,
+      job: result.job,
     });
   } catch (error) {
     console.error(

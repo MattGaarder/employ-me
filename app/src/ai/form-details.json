@@ -8,14 +8,14 @@
 
     "contact": {
       "email": "matteus.gaarder@gmail.com",
-      "phone": "07498650030"
+      "phone": "07498658030"
     },
 
     "location": {
-      "currentCountry": "Brazil",
-      "city": "Fortaleza",
-      "postcode": "60833-155",
-      "address": "Ministro Abner de Vasconcelos 301"
+      "currentCountry": "United Kingdom",
+      "city": "London",
+      "postcode": "N8 8PS",
+      "address": "30 Elder Avenue"
     },
 
     "professionalLinks": {
@@ -26,7 +26,7 @@
 
     "professionalIdentity": {
       "headline": "Learning Design + Technology + Creative Production + Automation + AI",
-      "summary": "Professional working at the intersection of technology, learning, and design, combining learning design and eLearning development, software and web development, multimedia production, teaching, localisation QA, AI data work, and automation."
+      "summary": "Creative technologist at the intersection of learning, design, and software development. I bridge creative and technical disciplines, combining multimedia production and instructional design with JavaScript development, AI, and workflow automation to create engaging experiences and practical solutions. Fluent in Japanese, with a global perspective and a passion for solving complex problems."
     },
 
     "education": [

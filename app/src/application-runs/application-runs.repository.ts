@@ -244,7 +244,7 @@ export function cancelApplicationRun(
     db.prepare(`
       UPDATE jobs
       SET
-        application_status = 'NOT_READY',
+        application_status = 'CANCELLED',
         updated_at = ?
       WHERE id = ?
     `).run(
@@ -343,7 +343,10 @@ export function getNextApplicationAttemptNumber(
   return (row.max_attempt ?? 0) + 1;
 }
 
+export type ClaimFailureReason = 'NO_QUEUED_JOBS' | 'NO_APPLICATION_URL';
+
 export interface ClaimedApplication {
+  ok: true;
   runId: number;
   job: {
     id: number;
@@ -353,10 +356,32 @@ export interface ClaimedApplication {
   };
 }
 
-export function claimNextQueuedApplication(): ClaimedApplication | null {
+export interface ClaimFailure {
+  ok: false;
+  reason: ClaimFailureReason;
+  message: string;
+}
+
+export type ClaimResult = ClaimedApplication | ClaimFailure;
+
+export function claimNextQueuedApplication(): ClaimResult {
   const db = getDb();
 
-  const claim = db.transaction(() => {
+  const claim = db.transaction((): ClaimResult => {
+    // First: is there anything QUEUED at all?
+    const queuedCount = (db
+      .prepare(`SELECT COUNT(*) AS cnt FROM jobs WHERE application_status = 'QUEUED'`)
+      .get() as { cnt: number }).cnt;
+
+    if (queuedCount === 0) {
+      return {
+        ok: false,
+        reason: 'NO_QUEUED_JOBS',
+        message: 'No jobs are currently in QUEUED status. Set a job to QUEUED in Notion and run the sync first.',
+      };
+    }
+
+    // Second: pick the first QUEUED job that has an application URL.
     const row = db
       .prepare(`
         SELECT
@@ -378,7 +403,11 @@ export function claimNextQueuedApplication(): ClaimedApplication | null {
       } | undefined;
 
     if (!row) {
-      return null;
+      return {
+        ok: false,
+        reason: 'NO_APPLICATION_URL',
+        message: `${queuedCount} job(s) are QUEUED but none has an application URL. Add an external application URL to at least one QUEUED job.`,
+      };
     }
 
     const attemptNumber = getNextApplicationAttemptNumber(row.id);
@@ -402,6 +431,7 @@ export function claimNextQueuedApplication(): ClaimedApplication | null {
       );
 
     return {
+      ok: true,
       runId: run.id!,
       job: {
         id: row.id,
