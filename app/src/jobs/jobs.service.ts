@@ -5,7 +5,6 @@ import { createNotionJob } from '../integrations/notion';
 import {
   insertSqliteJob,
   existsBySourceJobId,
-  updateEvaluation,
 } from './jobs.repository';
 import { insertRun } from '../db/import-runs.repository';
 import { evaluateJob } from '../ai/evaluator';
@@ -81,33 +80,12 @@ export async function importJobs(
         continue;
       }
 
-      console.log(`${jobTag} Building complete Job object`);
-      console.log(`[sqlite] Inserting job...`);
-
-      const result = insertSqliteJob(job);
-
-      if (!result.inserted) {
-        console.error(`[sqlite] Failed to insert job into SQLite`);
-        failed++;
-        continue;
-      }
-
-      sqliteInserted++;
-      console.log(`[sqlite] Job inserted with ID ${job.id}`);
-
       console.log(`[ai] Evaluating job...`);
 
       try {
         const evaluation = await evaluateJob(job);
 
-        updateEvaluation(
-          job.id!,
-          evaluation.fitScore,
-          evaluation.fitExplanation,
-          evaluation.coverLetter,
-        );
-
-        // Keep the in-memory Job object in sync
+        // Populate in-memory Job object with evaluation results before persistence
         job.fitScore = evaluation.fitScore;
         job.fitExplanation = evaluation.fitExplanation;
         job.coverLetter = evaluation.coverLetter;
@@ -116,6 +94,29 @@ export async function importJobs(
       } catch (aiErr) {
         const errorMsg = aiErr instanceof Error ? aiErr.message : String(aiErr);
         console.error(`[ai] Evaluation failed: ${errorMsg}`);
+        console.log(`${jobTag} FAILED — job will not be persisted`);
+        failed++;
+        continue;
+      }
+
+      console.log(`${jobTag} Building complete Job object`);
+      console.log(`[sqlite] Inserting job...`);
+
+      try {
+        const result = insertSqliteJob(job);
+
+        if (!result.inserted) {
+          console.error(`[sqlite] Failed to insert job into SQLite`);
+          failed++;
+          continue;
+        }
+
+        sqliteInserted++;
+        console.log(`[sqlite] Job inserted with ID ${job.id}`);
+      } catch (sqliteErr) {
+        const errorMsg =
+          sqliteErr instanceof Error ? sqliteErr.message : String(sqliteErr);
+        console.error(`[sqlite] Failed to insert job into SQLite: ${errorMsg}`);
         failed++;
         continue;
       }

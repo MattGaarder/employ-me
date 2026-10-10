@@ -65,7 +65,7 @@ export function insertSqliteJob(job: Job): { inserted: boolean; id?: number } {
       date_posted: job.datePosted ?? null,
       date_found: job.dateFound || ts,
       fit_score: job.fitScore ?? null,
-      fit_explanation: job.fitExplanation,
+      fit_explanation: job.fitExplanation ?? null,
       cover_letter: job.coverLetter ?? null,
       application_status: job.applicationStatus,
       application_url: job.applicationUrl ?? null,

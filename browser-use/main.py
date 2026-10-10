@@ -5,11 +5,20 @@ import json
 import sys
 import os
 import subprocess
-from pathlib import Path
 
+from dotenv import load_dotenv
+from pathlib import Path
 import requests
 
-from browser_use import Agent, ChatOllama
+from browser_use import Agent, ChatGoogle
+
+load_dotenv(Path(__file__).resolve().parent.parent / "app" / ".env")
+
+api_key = os.getenv("GOOGLE_API_KEY")
+if not api_key:
+    raise RuntimeError(
+        "GOOGLE_API_KEY is missing. Check the project .env file."
+    )
 
 
 API_BASE_URL = "http://localhost:3001/api"
@@ -362,14 +371,8 @@ async def main():
 
     candidate_data = json.dumps(form_details, indent=2)
 
-    llm = ChatOllama(
-        model="qwen3.5:latest",
-        timeout=300,
-        ollama_options={
-            "num_ctx": 32768,
-            "think": True,
-            "num_predict": 4096,
-        },
+    llm = ChatGoogle(
+        model="gemini-3.8-flash",
     )
 
     agent = Agent(
@@ -400,22 +403,8 @@ FILE UPLOAD RULE:
 When a form requires a CV or other document, use Browser Use's
 upload_file browser action.
 
-Do not use the normal input action to enter a filesystem path.
-
-Do not navigate to the file path.
-
-Do not open a file:// URL.
-
-Do not attempt to interact with the macOS Finder/file picker.
-
 The candidate CV is the local file specified in documents.cv.
 Upload it directly to the website's file-upload control.
-
-IMPORTANT:
-
-Do not submit the application.
-
-Stop before the final application submission.
 """,
         llm=llm,
         llm_timeout=900,
