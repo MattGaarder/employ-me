@@ -8,6 +8,12 @@ import subprocess
 
 from dotenv import load_dotenv
 from pathlib import Path
+
+from importlib.metadata import PackageNotFoundError, version
+
+from diagnostics import RunDiagnostics
+
+
 import requests
 
 from browser_use import Agent, ChatGoogle
@@ -33,10 +39,15 @@ current_step = 0
 RUN_DIR = None
 HISTORY_FILE = None
 LOG_FILE = None
+DIAGNOSTICS_FILE = None
+
+# Active diagnostics objects for the current application run.
+_diagnostics = None
+_diagnostics_agent = None
 
 
 def setup_run_files(run_id: int):
-    global RUN_DIR, HISTORY_FILE, LOG_FILE
+    global RUN_DIR, HISTORY_FILE, LOG_FILE, DIAGNOSTICS_FILE
 
     # main.py lives in browser-use/ — write logs there too.
     base = Path(__file__).parent / "runs" / str(run_id)
@@ -45,6 +56,7 @@ def setup_run_files(run_id: int):
     RUN_DIR = base
     HISTORY_FILE = base / "history.json"
     LOG_FILE = base / "run.log"
+    DIAGNOSTICS_FILE = base / "diagnostics.json"
 
 
 # ---------------------------------------------------------
@@ -122,7 +134,24 @@ def stop_console_logging():
             _log_file_handle.close()
         except Exception:
             pass
+
         _log_file_handle = None
+
+    # Save diagnostics for interrupted or cancelled runs.
+    if _diagnostics is not None:
+        try:
+            _diagnostics.sync_finalize(
+                agent=_diagnostics_agent,
+                outcome="CANCELLED",
+                error_message="Application run cancelled or interrupted.",
+            )
+        except Exception as exc:
+            print(
+                f"[diagnostics] Warning: Failed to finalise diagnostics: {exc}",
+                flush=True,
+            )
+
+    stop_console_logging()
 
 
 # ---------------------------------------------------------
@@ -257,6 +286,17 @@ async def report_step_start(agent):
     global current_step
     current_step += 1
     print(f"[progress] Browser Use STARTED step {current_step}")
+
+        # Record the diagnostic step without disrupting application progress.
+    if _diagnostics is not None:
+        try:
+            _diagnostics.on_step_start(agent, current_step)
+        except Exception as exc:
+            print(
+                f"[diagnostics] Warning: Step-start recording failed: {exc}",
+                flush=True,
+            )
+
     response = requests.patch(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/progress",
         json={
@@ -269,6 +309,17 @@ async def report_step_start(agent):
 
 async def report_step_end(agent):
     print(f"[progress] Browser Use COMPLETED step {current_step}")
+
+    # Record diagnostic details for the completed step.
+    if _diagnostics is not None:
+        try:
+            _diagnostics.on_step_end(agent, current_step)
+        except Exception as exc:
+            print(
+                f"[diagnostics] Warning: Step-end recording failed: {exc}",
+                flush=True,
+            )
+
     response = requests.patch(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/progress",
         json={
@@ -344,7 +395,7 @@ def cancel_application_run(
 # ---------------------------------------------------------
 
 async def main():
-    global RUN_ID
+    global RUN_ID, _diagnostics, _diagnostics_agent
 
     claimed = claim_next_application()
 
@@ -355,6 +406,42 @@ async def main():
 
     setup_run_files(RUN_ID)
     start_console_logging()
+
+        # -----------------------------------------------------
+    # Diagnostics setup
+    # -----------------------------------------------------
+
+    try:
+        try:
+            browser_use_version = version("browser-use")
+        except PackageNotFoundError:
+            browser_use_version = "unknown"
+
+        _diagnostics = RunDiagnostics(
+            run_id=RUN_ID,
+            model="gemini-3.8-flash",
+            browser_use_version=browser_use_version,
+            step_timeout=180,
+            llm_timeout=900,
+            run_dir=RUN_DIR,
+            log_file=LOG_FILE,
+            history_file=HISTORY_FILE,
+            diagnostics_file=DIAGNOSTICS_FILE,
+        )
+
+        print(
+            f"[diagnostics] Initialised for run {RUN_ID}",
+            flush=True,
+        )
+
+    except Exception as exc:
+        # Diagnostics must never prevent an application from running.
+        _diagnostics = None
+
+        print(
+            f"[diagnostics] Warning: Initialisation failed: {exc}",
+            flush=True,
+        )
 
     print("\n========== QUEUED APPLICATION ==========")
     print(f"Job ID:          {job['id']}")
@@ -374,6 +461,17 @@ async def main():
     llm = ChatGoogle(
         model="gemini-3.8-flash",
     )
+
+    # Track LLM request durations and any usage metadata returned.
+    if _diagnostics is not None:
+        try:
+            _diagnostics.instrument_llm(llm)
+            print("[diagnostics] LLM instrumentation enabled", flush=True)
+        except Exception as exc:
+            print(
+                f"[diagnostics] Warning: LLM instrumentation failed: {exc}",
+                flush=True,
+            )
 
     agent = Agent(
         task=f"""
@@ -416,6 +514,8 @@ Upload it directly to the website's file-upload control.
         custom_exit_callback=_cancel_on_exit,
     )
 
+    _diagnostics_agent = agent
+
     try:
         # Tell employ-me that Browser Use is starting → RUNNING.
         start_application_run()
@@ -436,6 +536,19 @@ Upload it directly to the website's file-upload control.
         print(f"History saved to: {HISTORY_FILE}")
         print(f"Log saved to:     {LOG_FILE}")
         print("===========================================\n")
+
+        # Save the final diagnostics report.
+        if _diagnostics is not None:
+            try:
+                await _diagnostics.finalize(
+                    agent=agent,
+                    outcome="COMPLETED",
+                )
+            except Exception as exc:
+                print(
+                    f"[diagnostics] Warning: Finalisation failed: {exc}",
+                    flush=True,
+                )
 
         # Mark the run as complete — deregister cancel atexit before calling.
         _cancellation_done_set()
@@ -464,6 +577,20 @@ Upload it directly to the website's file-upload control.
         print("\n========== BROWSER USE ERROR ==========\n")
         print(error)
         print("\n=======================================\n")
+
+        # Preserve diagnostics for failed application runs.
+        if _diagnostics is not None:
+            try:
+                await _diagnostics.finalize(
+                    agent=_diagnostics_agent,
+                    outcome="FAILED",
+                    error_message=str(error),
+                )
+            except Exception as exc:
+                print(
+                    f"[diagnostics] Warning: Finalisation failed: {exc}",
+                    flush=True,
+                )
 
         # Deregister cancel — we're going to call fail instead.
         _cancellation_done_set()
