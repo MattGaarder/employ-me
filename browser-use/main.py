@@ -17,7 +17,7 @@ from diagnostics import RunDiagnostics
 
 import requests
 
-from browser_use import Agent, Browser, ChatGoogle
+from browser_use import Agent, Browser, ChatGoogle, ChatOllama
 project_root = Path(__file__).resolve().parent.parent
 
 load_dotenv(Path(__file__).resolve().parent.parent / "app" / ".env")
@@ -493,6 +493,13 @@ async def main():
 
     llm = ChatGoogle(
         model="gemini-3.8-flash",
+        max_retries=8,
+        retry_base_delay=2.0,
+        retry_max_delay=60.0,
+    )
+
+    fallback_llm = ChatOllama(
+        model="qwen3.5:latest",
     )
 
     # Track LLM request durations and any usage metadata returned.
@@ -553,6 +560,7 @@ If the application provides a cover-letter text field instead of a file
 upload, use the generated cover-letter text if it is available.
 """,
         llm=llm,
+        fallback_llm=fallback_llm,
         browser=browser,
         llm_timeout=900,
         available_file_paths=[
