@@ -2,12 +2,11 @@
 
 import { searchJobs, getJobDetails } from '../integrations/linkedin-api';
 import { createNotionJob } from '../integrations/notion';
-import {
-  insertSqliteJob,
-  existsBySourceJobId,
-} from './jobs.repository';
+import { filterSeniorJobs } from '../services/filter.service';
+import { insertSqliteJob, existsBySourceJobId } from './jobs.repository';
 import { insertRun } from '../db/import-runs.repository';
 import { evaluateJob } from '../ai/evaluator';
+import { generateCoverLetterDocument } from '../ai/cover-letter-generator';
 import { getDb } from '../db/database';
 import { ImportResult } from '../types';
 
@@ -37,9 +36,15 @@ export async function importJobs(
       `[linkedin] Searching for: ${params.keywords || 'Any'} | ${params.location || 'Any'} | ${params.dateSincePosted || 'past_24h'}`,
     );
 
-    const discoveredJobs = await searchJobs(params);
+    const scrapedJobs = await searchJobs(params);
+    const discoveredJobs = filterSeniorJobs(scrapedJobs);
+
     const jobsFound = discoveredJobs.length;
-    console.log(`[linkedin] Search returned ${jobsFound} listings`);
+    const jobsFiltered = scrapedJobs.length - discoveredJobs.length;
+
+    console.log(`[linkedin] Search returned ${scrapedJobs.length} listings`);
+    console.log(`[filter] Removed ${jobsFiltered} senior listings`);
+    console.log(`[filter] ${jobsFound} listings remaining`);
 
     let jobsNew = 0;
     let jobsDuplicate = 0;
@@ -89,6 +94,11 @@ export async function importJobs(
         job.fitScore = evaluation.fitScore;
         job.fitExplanation = evaluation.fitExplanation;
         job.coverLetter = evaluation.coverLetter;
+
+        await generateCoverLetterDocument(
+          job.company,
+          evaluation.coverLetter,
+        );
 
         console.log(`[ai] Evaluation complete — score: ${evaluation.fitScore}/100`);
       } catch (aiErr) {

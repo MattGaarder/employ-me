@@ -9,8 +9,6 @@ You must make your assessment using your overall judgement of the candidate's
 experience, skills, career direction, transferable skills and the requirements
 of the job.
 
-Do NOT rely on simple keyword matching.
-
 A strong match does not require the candidate to have every requirement.
 Consider transferable experience and the overall suitability of the position.
 
@@ -47,7 +45,7 @@ The cover letter should:
 - Avoid generic filler.
 - Avoid simply repeating the job description.
 - Never invent experience.
-- Generally be around 300-450 words.
+- Generally be around 200 words.
 
 Return ONLY the requested structured JSON response.
 `;

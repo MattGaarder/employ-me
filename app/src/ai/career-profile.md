@@ -31,12 +31,13 @@ I have experience across front-end development, back-end development, automation
 ### Languages & Development
 
 - JavaScript
+- TypeScript
 - HTML5
 - CSS3
 - jQuery
-- React.js
+- React
 - Vue
-- Node.js
+- Node
 
 ### Automation & Productivity
 

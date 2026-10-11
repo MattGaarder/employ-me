@@ -14,6 +14,16 @@ const SearchFiltersSchema = z.object({
 export const searchJobs = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const filters = SearchFiltersSchema.parse(req.query);
+    console.log('[Search API] Validated filters:', {
+      keywords: filters.keywords,
+      location: filters.location,
+      dateSincePosted: filters.dateSincePosted,
+      page: filters.page,
+    });
+
+    console.log('[Search API] Contains NOT Senior:', 
+      filters.keywords?.includes('NOT Senior')
+    );
 
     const jobs = await ScraperService.searchJobs(filters as JobSearchFilters);
 

@@ -15,8 +15,7 @@ export const jobSearches: JobSearchConfig[] = [
        "Web Developer" OR
        "JavaScript Developer" OR
        "TypeScript Developer" OR
-       "Vue Developer" OR
-       "React Developer")
+       "Vue Developer")
       NOT Senior
       NOT Lead
       NOT Principal
@@ -24,12 +23,11 @@ export const jobSearches: JobSearchConfig[] = [
       NOT Manager
       NOT Director
       NOT Head
-    `,
+    `.replace(/\s+/g, ' ').trim(),
     location: 'United Kingdom',
-    dateSincePosted: 'past_24h',
+    dateSincePosted: 'past_week',
     enabled: true,
   },
-
   {
     name: 'UK — Learning Technology',
     keywords: `
@@ -45,12 +43,11 @@ export const jobSearches: JobSearchConfig[] = [
       NOT Manager
       NOT Director
       NOT Head
-    `,
+    `.replace(/\s+/g, ' ').trim(),
     location: 'United Kingdom',
     dateSincePosted: 'past_week',
     enabled: true,
   },
-
   {
     name: 'UK — AI Training / Evaluation',
     keywords: `
@@ -67,7 +64,7 @@ export const jobSearches: JobSearchConfig[] = [
       NOT Manager
       NOT Director
       NOT Head
-    `,
+    `.replace(/\s+/g, ' ').trim(),
     location: 'United Kingdom',
     dateSincePosted: 'past_week',
     enabled: false,

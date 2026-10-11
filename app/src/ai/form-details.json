@@ -8,7 +8,7 @@
 
     "contact": {
       "email": "matteus.gaarder@gmail.com",
-      "phone": "07498658030"
+      "phone": "+447498658030"
     },
 
     "location": {
@@ -270,6 +270,7 @@
 
       "programmingAndWebDevelopment": [
         "JavaScript",
+        "TypeScript",
         "HTML5",
         "CSS3",
         "jQuery",
@@ -322,7 +323,7 @@
     "languages": [
       {
         "language": "Japanese",
-        "proficiency": "Advanced"
+        "proficiency": "Fluent"
       },
       {
         "language": "Portuguese",
@@ -342,15 +343,52 @@
       "workAuthorization": true,
       "requiresVisaSponsorship": false,
       "noticePeriod": "1 month",
-      "salaryExpectation": "£30000",
+      "salaryExpectation": "£30,000 per year",
       "dateAvailable": "2026-10-03",
       "willingToRelocate": true,
-      "willingToTravel": true
+      "willingToTravel": true,
+      "currentlyEmployedByHiringCompany": false,
+
+      "citizenships": ["British", "Brazilian"],
+      "countryOfResidence": "UK",
+
+      "demographics": {
+        "gender": "Male",
+        "sexualOrientation": "Straight",
+        "raceEthnicity": "White (Other)",
+        "religion": "No religion",
+        "age": 33,
+        "transIdentity": false
+      },
+
+      "disability": {
+        "hasDisabilityOrLongTermHealthCondition": false,
+        "requiresRecruitmentAdjustments": false
+      },
+
+      "economicBackground": {
+        "isVeteran": false,
+        "receivedFreeSchoolMeals": false,
+        "receivedSchoolUniformOrPEKitFunding": false,
+        "parentOrGuardianEducationLevel": "University",
+        "parentOrGuardianEmploymentSector": "Professional",
+        "attendedIndependentFee-PayingSchool": true,
+        "attendedIndependentFee-PayingUniversity": false
+      },
+
+      "other": {
+        "hasDrivingLicence": false,
+        "hasFamilyMemberAtHiringCompany": false,
+        "hasConflictOfInterest": false,
+        "consentsToBackgroundChecks": true,
+        "consentsToContactingCurrentEmployer": true,
+        "willingToProvideReferences": true
+      }
     },
 
     "documents": {
       "cv": "/Users/matteusgaarder/Desktop/Projects/employ-me/app/src/ai/GAARDER-CV.docx",
-      "coverLetter": null
+      "coverLetter": "/Users/matteusgaarder/Desktop/Projects/employ-me/app/src/ai/GAARDER-{company-name}-COVER.docx"
     },
 
     "references": [
@@ -377,8 +415,7 @@
       "distinguishProfessionalExperienceFromPersonalProjects": true,
       "doNotExaggerateExperience": true,
       "requireEvidenceForTechnologyClaims": true,
-      "useCautiousLanguageWhenEvidenceIsAmbiguous": true,
-      "unknownValuePolicy": "Do not infer. Leave blank or request clarification."
+      "useCautiousLanguageWhenEvidenceIsAmbiguous": true
     }
   }
 }

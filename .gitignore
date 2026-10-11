@@ -12,3 +12,9 @@ node_modules/
 
 # Logs
 *.log
+
+# Generated cover letters
+app/src/ai/cover-letters/
+
+# Browser automation diagnostic runs
+browser-use/runs/

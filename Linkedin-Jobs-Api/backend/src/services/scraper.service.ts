@@ -60,7 +60,31 @@ export class ScraperService {
       params.append('start', start.toString());
     }
 
-    return `${baseUrl}?${params.toString()}`;
+    const finalUrl = `${baseUrl}?${params.toString()}`;
+
+    const parsedUrl = new URL(finalUrl);
+    const decodedKeywords = parsedUrl.searchParams.get('keywords');
+
+    console.log('[LinkedIn URL] Input filters:', {
+      keywords: filters.keywords,
+      location: filters.location,
+      dateSincePosted: filters.dateSincePosted,
+      page: filters.page,
+    });
+
+    console.log('[LinkedIn URL] Encoded URL:', finalUrl);
+
+    console.log('[LinkedIn URL] Decoded keywords:', decodedKeywords);
+
+    console.log('[LinkedIn URL] Contains NOT Senior:', 
+      decodedKeywords?.includes('NOT Senior')
+    );
+    console.log(
+      '[LinkedIn URL] Keywords preserved:',
+      filters.keywords === decodedKeywords
+    );
+
+    return finalUrl;
   }
 
   private static isCircuitOpen = false;
@@ -76,6 +100,12 @@ export class ScraperService {
   }
 
   private static checkCircuitBreaker(): void {
+    // TEMPORARY: Allow requests even when the circuit breaker is open.
+    if (process.env.DISABLE_LINKEDIN_CIRCUIT_BREAKER === 'true') {
+      logger.warn('[linkedin] Circuit breaker bypassed — debugging mode enabled');
+      return;
+    }
+
     if (this.isCircuitOpen) {
       const msg = `Circuit breaker is OPEN: ${this.circuitBreakerReason || 'LinkedIn restriction detected'}`;
       logger.warn(`[linkedin] Refusing operation — ${msg}`);
@@ -153,7 +183,10 @@ export class ScraperService {
     await this.pace();
 
     const searchUrl = this.constructSearchUrl(filters);
-    logger.info(`Scraping URL: ${searchUrl}`);
+    logger.info(`LinkedIn search URL: ${searchUrl}`);
+    logger.info(`Search keywords: ${filters.keywords}`);
+    logger.info(`Search location: ${filters.location}`);
+    logger.info(`Date filter: ${filters.dateSincePosted}`);
 
     const browser = await puppeteer.launch({
       headless: 'new',
@@ -166,7 +199,13 @@ export class ScraperService {
       await page.setViewport({ width: 1920, height: 1080 });
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36');
 
+      logger.info(`[linkedin] Requested URL: ${searchUrl}`);
+
       const response = await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+      logger.info(`[linkedin] Final URL: ${page.url()}`);
+      logger.info(`[linkedin] HTTP status: ${response?.status()}`);
+      logger.info(`[linkedin] Page title: ${await page.title()}`);
 
       if (response && response.status() === 429) {
         this.tripCircuitBreaker('HTTP 429 Too Many Requests');

@@ -7,6 +7,6 @@
     "moduleResolution": "Node",
     "lib": ["ES2020", "DOM"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../../app/src/services/filter.service.ts"],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

@@ -5,6 +5,7 @@ import json
 import sys
 import os
 import subprocess
+import re
 
 from dotenv import load_dotenv
 from pathlib import Path
@@ -16,9 +17,12 @@ from diagnostics import RunDiagnostics
 
 import requests
 
-from browser_use import Agent, ChatGoogle
+from browser_use import Agent, Browser, ChatGoogle
+project_root = Path(__file__).resolve().parent.parent
 
 load_dotenv(Path(__file__).resolve().parent.parent / "app" / ".env")
+
+
 
 api_key = os.getenv("GOOGLE_API_KEY")
 if not api_key:
@@ -137,22 +141,6 @@ def stop_console_logging():
 
         _log_file_handle = None
 
-    # Save diagnostics for interrupted or cancelled runs.
-    if _diagnostics is not None:
-        try:
-            _diagnostics.sync_finalize(
-                agent=_diagnostics_agent,
-                outcome="CANCELLED",
-                error_message="Application run cancelled or interrupted.",
-            )
-        except Exception as exc:
-            print(
-                f"[diagnostics] Warning: Failed to finalise diagnostics: {exc}",
-                flush=True,
-            )
-
-    stop_console_logging()
-
 
 # ---------------------------------------------------------
 # Cancellation — guaranteed to run on any exit path
@@ -202,6 +190,20 @@ def _cancel_on_exit():
             )
     except Exception as exc:
         print(f"[cancel] Failed to reach API or sync: {exc}", flush=True)
+
+    # Save diagnostics for interrupted or cancelled runs.
+    if _diagnostics is not None:
+        try:
+            _diagnostics.sync_finalize(
+                agent=_diagnostics_agent,
+                outcome="CANCELLED",
+                error_message="Application run cancelled or interrupted.",
+            )
+        except Exception as exc:
+            print(
+                f"[diagnostics] Warning: Failed to finalise diagnostics: {exc}",
+                flush=True,
+            )
 
     stop_console_logging()
 
@@ -453,10 +455,41 @@ async def main():
 
     form_details_path = Path(__file__).parent / "../app/src/ai/form-details.json"
 
+    
+
     with form_details_path.open("r", encoding="utf-8") as f:
         form_details = json.load(f)
 
+    # ---------------------------------------------------------
+    # Cover letter path
+    # ---------------------------------------------------------
+
+    cover_letters_dir = (
+        project_root / "app" / "src" / "ai" / "cover-letters"
+    )
+
+    safe_company_name = re.sub(
+        r'\s+',
+        '-',
+        re.sub(
+            r'[<>:"/\\|?*\x00-\x1F]',
+            '',
+            job["company"],
+        ),
+    ).strip('-')
+
+    safe_company_name = re.sub(r'-+', '-', safe_company_name)
+
+    cover_letter_path = (
+        cover_letters_dir / f"GAARDER-{safe_company_name}-COVER.docx"
+    )
+
+    print(f"[documents] Cover letter path: {cover_letter_path}")
+    print(f"[documents] File exists: {cover_letter_path.is_file()}")
+
     candidate_data = json.dumps(form_details, indent=2)
+
+    
 
     llm = ChatGoogle(
         model="gemini-3.8-flash",
@@ -472,6 +505,11 @@ async def main():
                 f"[diagnostics] Warning: LLM instrumentation failed: {exc}",
                 flush=True,
             )
+
+    browser = Browser(
+        keep_alive=True,
+        headless=False,
+    )
 
     agent = Agent(
         task=f"""
@@ -496,18 +534,30 @@ For dropdowns, radio buttons, checkboxes, and Yes/No questions, only
 select an answer when the corresponding answer is explicitly
 established by the candidate data.
 
-FILE UPLOAD RULE:
+FILE UPLOAD RULES:
 
-When a form requires a CV or other document, use Browser Use's
-upload_file browser action.
+When a form requires a CV or résumé, use Browser Use's upload_file
+browser action to upload the candidate CV.
 
-The candidate CV is the local file specified in documents.cv.
-Upload it directly to the website's file-upload control.
+When a form requires a cover letter as a document, upload the generated
+cover letter for the current job using upload_file.
+
+The candidate CV is the file specified in documents.cv.
+
+The cover letter for the current job is:
+{cover_letter_path}
+
+Do not confuse the CV with the cover letter.
+
+If the application provides a cover-letter text field instead of a file
+upload, use the generated cover-letter text if it is available.
 """,
         llm=llm,
+        browser=browser,
         llm_timeout=900,
         available_file_paths=[
-            "/Users/matteusgaarder/Desktop/Projects/employ-me/app/src/ai/GAARDER-CV.docx"
+            "/Users/matteusgaarder/Desktop/Projects/employ-me/app/src/ai/GAARDER-CV.docx",
+            str(cover_letter_path),
         ],
         # Hook into Browser Use's own Ctrl+C exit path.
         # This fires just before Browser Use calls sys.exit() on the second Ctrl+C.
