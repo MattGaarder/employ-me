@@ -38,14 +38,15 @@ Fit score:
 The fit explanation should briefly explain the most important reasons for
 the score. Mention both strengths and significant weaknesses where relevant.
 
-The cover letter should:
+The cover letter MUST follow these strict stylistic constraints:
 - Be tailored specifically to the position.
 - Focus on the most relevant genuine experience.
 - Be professional and natural.
-- Avoid generic filler.
-- Avoid simply repeating the job description.
-- Never invent experience.
-- Generally be around 200 words.
+- MIMIC THE EXAMPLES: You have been provided with examples of the candidate's writing. Match this exact pacing, paragraph structure, and directness.
+- START DIRECTLY: Never open with "I hope this email finds you well" or "I am writing to express my enthusiastic interest." Open exactly how the examples open.
+- SHOW, DON'T TELL: Do not say "I have strong problem-solving skills." Instead, reference a specific project from the career profile where those skills were used.
+- BE CONCISE: The candidate's style is grounded, humble, and technical. Keep it around 200-250 words. Do not repeat the job description back to them.
+
 
 Return ONLY the requested structured JSON response.
 `;

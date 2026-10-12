@@ -29,6 +29,11 @@ const careerProfile = fs.readFileSync(
   'utf8'
 );
 
+const letterExamples = fs.readFileSync(
+  path.join(process.cwd(), 'src/ai/cover-letter-examples.md'),
+  'utf8'
+);
+
 // const evaluationSchema = {
 //   type: 'object',
 //   properties: {
@@ -79,6 +84,9 @@ export async function evaluateJob(
   const userPrompt = `
 ## Candidate Career Profile
 ${careerProfile}
+
+## Candidate Voice & Style Guide
+${letterExamples}
 
 ---
 ## Job
