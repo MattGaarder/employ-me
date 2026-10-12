@@ -15,6 +15,7 @@
     "test-notion": "tsx src/test-notion.ts",
     "sync:notion": "ts-node src/services/notionsql-sync.ts",
     "sync:notion:reverse": "ts-node src/services/sqlnotion-sync.ts",
+    "backfill:notion:descriptions": "ts-node src/services/backfill-notion-descriptions.ts",
     "apply": "npm run sync:notion && ../browser-use/.venv/bin/python ../browser-use/main.py"
   },
   "dependencies": {

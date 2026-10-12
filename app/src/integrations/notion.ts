@@ -1,7 +1,7 @@
 // Notion database integration
 
 import { Client } from '@notionhq/client';
-import type { BlockObjectRequest, PageObjectResponse } from '@notionhq/client/build/src/api-endpoints';
+import type { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints';
 import { Job } from '../types';
 import 'dotenv/config';
 
@@ -44,38 +44,6 @@ function toRichText(text: string | null | undefined): Array<{ text: { content: s
   return chunks;
 }
 
-function paragraphBlock(text: string): BlockObjectRequest {
-  return {
-    object: 'block',
-    type: 'paragraph',
-    paragraph: {
-      rich_text: [
-        {
-          type: 'text',
-          text: {
-            content: text,
-          },
-        },
-      ],
-    },
-  };
-}
-
-// Split into chunks (Notion block rich_text items also have limits)
-function descriptionToBlocks(
-  text: string | null | undefined
-): BlockObjectRequest[] {
-  if (!text?.trim()) return [];
-
-  const chunkSize = 2000;
-  const blocks: BlockObjectRequest[] = [];
-
-  for (let i = 0; i < text.length; i += chunkSize) {
-    blocks.push(paragraphBlock(text.slice(i, i + chunkSize)));
-  }
-  return blocks;
-}
-
 export async function createNotionJob(job: Job) {
   const notionSourceName =
     job.applicationUrl && job.applicationUrl.trim() !== ''
@@ -88,6 +56,7 @@ export async function createNotionJob(job: Job) {
     Location: { rich_text: toRichText(job.location) },
     'Source job ID': { rich_text: toRichText(job.sourceJobId) },
     'Date posted': { rich_text: toRichText(job.datePosted) },
+    Description: { rich_text: toRichText(job.description) },
     Notes: { rich_text: toRichText(job.notes) },
     'Fit explanation': { rich_text: toRichText(job.fitExplanation) },
     'Cover letter': { rich_text: toRichText(job.coverLetter) },
@@ -102,14 +71,6 @@ export async function createNotionJob(job: Job) {
   return notion.pages.create({
     parent: { database_id: databaseId as string },
     properties,
-    children: [
-      {
-        object: "block",
-        type: "heading_2",
-        heading_2: { rich_text: [{ type: "text", text: { content: "Job description" } }] },
-      },
-      ...descriptionToBlocks(job.description),
-    ],
   });
 }
 
@@ -163,3 +124,19 @@ export async function updateNotionApplicationStatus(
     },
   });
 }
+
+export async function updateNotionJobDescription(
+  pageId: string,
+  description: string,
+) {
+  return notion.pages.update({
+    page_id: pageId,
+    properties: {
+      Description: {
+        rich_text: toRichText(description),
+      },
+    },
+  });
+}
+
+export { notion, getDataSourceId, toRichText };

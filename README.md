@@ -187,6 +187,7 @@ npm run import                 # Search → filter → evaluate → cover letter
 
 npm run apply                  # Notion → SQLite sync, then launch the browser agent
 npm run sync:notion:reverse    # Push SQLite statuses to Notion manually
+npm run backfill:notion:descriptions # Backfill job descriptions from SQLite to Notion Description column
 ```
 
 ---

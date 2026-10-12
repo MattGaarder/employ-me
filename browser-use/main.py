@@ -149,6 +149,9 @@ def stop_console_logging():
 _cancellation_done = False
 
 
+_launched_browser_pids = set()
+
+
 def _cancel_on_exit():
     """
     Cancel the current application run.
@@ -165,6 +168,20 @@ def _cancel_on_exit():
     if _cancellation_done:
         return
     _cancellation_done = True
+
+    # Close any launched Chrome browser processes on final cancellation
+    for pid in list(_launched_browser_pids):
+        try:
+            import psutil
+            proc = psutil.Process(pid)
+            for child in proc.children(recursive=True):
+                try:
+                    child.terminate()
+                except Exception:
+                    pass
+            proc.terminate()
+        except Exception:
+            pass
 
     # Nothing to cancel if we never got past claim.
     if RUN_ID is None:
@@ -215,15 +232,33 @@ atexit.register(_cancel_on_exit)
 
 
 # ---------------------------------------------------------
-# Hook cancellation into Browser Use's own signal handler
+# Prevent Chrome from receiving terminal SIGINT on Ctrl+C
 # ---------------------------------------------------------
-# Agent.run() builds a SignalHandler with its own telemetry-only
-# custom_exit_callback, then calls os._exit(0) on second Ctrl+C / SIGTERM.
-# Agent(custom_exit_callback=...) is silently swallowed by **kwargs, so we
-# wrap SignalHandler instead. Agent.run() imports it from browser_use.utils
-# at call time, so patching the module attribute is enough — and unlike
-# editing .venv, this survives `pip install -U browser-use`.
+# By default, Chrome subprocesses inherit the terminal's process group.
+# When the user presses Ctrl+C, the OS signals both Python and Chrome,
+# which causes Chrome to crash/detach tabs immediately on the first Ctrl+C.
+# By passing start_new_session=True, Chrome runs in its own session so only
+# Python receives the SIGINT, leaving Chrome and its tabs completely intact
+# during pause. The browser is only closed when cancelled on the second Ctrl+C.
+import browser_use.browser.watchdogs.local_browser_watchdog as _lbw_mod
 
+_orig_create_subprocess_exec = _lbw_mod.asyncio.create_subprocess_exec
+
+
+async def _safe_create_subprocess_exec(*args, **kwargs):
+    kwargs.setdefault('start_new_session', True)
+    proc = await _orig_create_subprocess_exec(*args, **kwargs)
+    if hasattr(proc, 'pid'):
+        _launched_browser_pids.add(proc.pid)
+    return proc
+
+
+_lbw_mod.asyncio.create_subprocess_exec = _safe_create_subprocess_exec
+
+
+# ---------------------------------------------------------
+# Hook cancellation & pause/resume into Browser Use's signal handler
+# ---------------------------------------------------------
 import browser_use.utils as _bu_utils
 
 _OriginalSignalHandler = _bu_utils.SignalHandler
@@ -245,6 +280,30 @@ class _EmployMeSignalHandler(_OriginalSignalHandler):
             custom_exit_callback=chained_exit_callback,
             **kwargs,
         )
+
+    def sigint_handler(self) -> None:
+        was_pressed = getattr(self.loop, 'ctrl_c_pressed', False)
+        super().sigint_handler()
+
+        # If this was the first Ctrl+C (not exiting yet), start background listener for [Enter]
+        if not was_pressed and getattr(self.loop, 'ctrl_c_pressed', False):
+            self._start_wait_for_enter()
+
+    def _start_wait_for_enter(self) -> None:
+        import threading
+
+        def _wait():
+            try:
+                sys.stdin.readline()
+                # If still paused (second Ctrl+C hasn't aborted), resume execution
+                if getattr(self.loop, 'ctrl_c_pressed', False):
+                    self.reset()
+                    if self.resume_callback:
+                        self.loop.call_soon_threadsafe(self.resume_callback)
+            except Exception:
+                pass
+
+        threading.Thread(target=_wait, daemon=True).start()
 
 
 _bu_utils.SignalHandler = _EmployMeSignalHandler
