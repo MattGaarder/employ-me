@@ -13,8 +13,7 @@ oriented programming, alongside strong debugging and problem-solving skills.
 
 I’m passionate about combining precision engineering with creativity — values that I think
 strongly align with [Company Name]'s culture of [innovation and performance]. I’d be thrilled to
-contribute my skills and curiosity to your development team and continue growing within such
-your dynamic, world-class environment.
+contribute my skills and curiosity to your development team and continue growing within such a dynamic, world-class environment.
 
 I look forward to connecting!
 
@@ -22,7 +21,7 @@ Matteus Gaarder
 
 +447498658030 | gaarder.netlify.app
 
-### Example 1 (eLearning Developer / Instructional Design Role)
+### Example 2 (eLearning Developer / Instructional Design Role)
 Dear [Company Name] Hiring Team,
 
 I am particularly drawn to [Company Name]'s ambition to move beyond traditional course-based learning towards digital resources that colleagues actively seek out because they are genuinely useful. That philosophy closely matches how I think about digital learning: technology should make information clearer, more accessible and more useful, rather than simply turning existing content into another online course.
@@ -45,10 +44,10 @@ Matteus Gaarder
 
 +447498658030 | gaarder.netlify.app
 
-### Example 2 (Technical /Developer Role)
+### Example 3 (Technical /Developer Role)
 Dear [Company Name] Hiring Team,
 
-I am writing to apply for the [Job Title] position. My career has been built at the intersection of human communication and system logic—evolving from linguistics and visual storytelling into software development and artificial intelligence. I am particularly drawn to [Company Name] because of your focus on [insert 1 specific company project, value, or product here], and I want to bring my blend of precision engineering and user-centric design to your team.
+I am writing to apply for the [Job Title] position. I am a developer with a non-traditional background: I transitioned from education and localization into software development because I wanted to build the automations, tools, and datasets that shape how people interact with technology. I am particularly drawn to [Company Name] because of your focus on [insert 1 specific company project, value, or product here], and I want to bring my blend of precision engineering and user-centric design to your team.
 
 Currently, as an AI Data Contributor at Postwork Labs, I design and deliver structured coding projects across various technical domains to train frontier AI systems. This role demands rigorous attention to detail; I write efficient, highly documented, and reliable code because the quality of these outputs directly shapes model behaviour and reliability. It has sharpened my ability to write clean logic and deepened my understanding of how next-generation AI systems interpret, generate, and structure data.
 
@@ -66,7 +65,7 @@ Matteus Gaarder
 
 +447498658030 | gaarder.netlify.app
 
-### Example 3 (AI / Automation Engineer Role)
+### Example 4 (AI / Automation Engineer Role)
 Dear [Company Name] Hiring Team,
 
 From an early fascination with storytelling and language to a career increasingly rooted in technology, my journey to artificial intelligence was not linear — but for me, it feels inevitable. I have always been captivated by how systems, whether linguistic, visual, or computational, can be designed to make sense of the world. Over time, that fascination has evolved from film and language into algorithms and automation. If I once studied how meaning is constructed through narrative, I now find myself studying how intelligence is constructed through code.
@@ -81,7 +80,7 @@ My long-term goal is to contribute to the development of AI applications that me
 
 In short, [Company Name] represents the ideal next step for me — a place where I can refine my technical skills, contribute to meaningful research, and grow into a developer capable of shaping the intelligent systems of tomorrow.
 
-Thank you for considering my application. I would be very pleased to discuss how my experience and skills could contribute to the Digital Learning team at [Company Name].
+Thank you for considering my application. I would be very pleased to discuss how my experience and skills could contribute to the [Job Position] team at [Company Name].
 
 I look forward to connecting!
 

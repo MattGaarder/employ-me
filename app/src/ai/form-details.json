@@ -8,7 +8,8 @@
 
     "contact": {
       "email": "matteus.gaarder@gmail.com",
-      "phone": "+447498658030"
+      "phone": "+447498658030",
+      "preferredMethod": "Email"
     },
 
     "location": {
@@ -99,7 +100,6 @@
           "Attention to detail"
         ]
       },
-
       {
         "employer": "PricewaterhouseCoopers (PwC)",
         "jobTitle": "eLearning Developer",
@@ -162,7 +162,6 @@
           "International collaboration"
         ]
       },
-
       {
         "employer": "TransPerfect",
         "jobTitle": "Project Moderator",
@@ -186,7 +185,6 @@
           "AI-related products"
         ]
       },
-
       {
         "employer": "JET Programme",
         "jobTitle": "Assistant Language Teacher",
@@ -216,7 +214,6 @@
           "Cross-cultural communication"
         ]
       },
-
       {
         "employer": "Digital Media Academy (DMA)",
         "jobTitle": "Film Production Instructor",
@@ -253,11 +250,9 @@
         "Interactive learning",
         "Facilitation"
       ],
-
       "authoringAndLearningTechnology": [
         "Articulate Storyline"
       ],
-
       "multimediaAndCreative": [
         "Adobe Creative Suite",
         "Photoshop",
@@ -267,7 +262,6 @@
         "Video editing",
         "Visual storytelling"
       ],
-
       "programmingAndWebDevelopment": [
         "JavaScript",
         "TypeScript",
@@ -278,7 +272,6 @@
         "Vue",
         "Node.js"
       ],
-
       "automationAndProductivity": [
         "Microsoft Power Platform",
         "Excel",
@@ -286,7 +279,6 @@
         "Google Apps Script",
         "JavaScript-based automation"
       ],
-
       "cloudAndData": [
         "Azure",
         "Firebase",
@@ -297,7 +289,6 @@
         "Netlify",
         "npm"
       ],
-
       "aiAndData": [
         "AI training data",
         "AI data collection",
@@ -307,7 +298,6 @@
         "AI tools",
         "Quality assurance"
       ],
-
       "qualityAndProcess": [
         "Quality assurance",
         "Bug identification",
@@ -340,49 +330,73 @@
     ],
 
     "applicationInformation": {
-      "workAuthorization": true,
-      "requiresVisaSponsorship": false,
-      "noticePeriod": "1 month",
-      "salaryExpectation": "£30,000 per year",
-      "dateAvailable": "2026-10-03",
-      "willingToRelocate": true,
-      "willingToTravel": true,
-      "currentlyEmployedByHiringCompany": false,
+      "preferences": {
+        "employmentType": "Permanent",
+        "preferredLocation": "Greater London",
+        "source": "LinkedIn",
+        "noticePeriod": "1 month",
+        "dateAvailable": "2026-10-03",
+        "willingToRelocate": true,
+        "willingToTravel": true
+      },
 
-      "citizenships": ["British", "Brazilian"],
-      "countryOfResidence": "UK",
+      "compensation": {
+        "mostRecentSalary": "£32,000",
+        "salaryExpectation": "£30,000"
+      },
+
+      "workAuthorization": {
+        "hasRightToWork": true,
+        "canProveRightToWork": true,
+        "rightToWorkStatus": "UK Citizen",
+        "requiresVisaSponsorship": false,
+        "citizenships": ["British", "Brazilian"],
+        "countryOfResidence": "UK"
+      },
+
+      "publicServiceAndGovernment": {
+        "isCivilServantOrAccreditedBody": false,
+        "isVeteran": false
+      },
 
       "demographics": {
         "gender": "Male",
-        "sexualOrientation": "Straight",
-        "raceEthnicity": "White (Other)",
+        "pronouns": "He/him/his",
+        "sexualOrientation": "Straight/Heterosexual",
+        "raceEthnicity": "Any other white background",
         "religion": "No religion",
         "age": 33,
         "transIdentity": false
       },
 
-      "disability": {
+      "socioEconomicBackground": {
+        "mainEarnerOccupationAtAge14": "Modern professional occupations (e.g., teacher, nurse, software designer)",
+        "parentOrGuardianEducationLevel": "University",
+        "attendedIndependentFeePayingSchool": true,
+        "attendedIndependentFeePayingUniversity": true,
+        "receivedFreeSchoolMeals": false,
+        "receivedSchoolUniformOrPEKitFunding": false
+      },
+
+      "disabilityAndAdjustments": {
         "hasDisabilityOrLongTermHealthCondition": false,
         "requiresRecruitmentAdjustments": false
       },
 
-      "economicBackground": {
-        "isVeteran": false,
-        "receivedFreeSchoolMeals": false,
-        "receivedSchoolUniformOrPEKitFunding": false,
-        "parentOrGuardianEducationLevel": "University",
-        "parentOrGuardianEmploymentSector": "Professional",
-        "attendedIndependentFee-PayingSchool": true,
-        "attendedIndependentFee-PayingUniversity": false
+      "consents": {
+        "joinTalentPool": true,
+        "retainDataForFutureRoles": true,
+        "backgroundChecks": true,
+        "contactCurrentEmployer": true,
+        "provideReferences": true
       },
 
       "other": {
         "hasDrivingLicence": false,
         "hasFamilyMemberAtHiringCompany": false,
+        "currentlyEmployedByHiringCompany": false,
         "hasConflictOfInterest": false,
-        "consentsToBackgroundChecks": true,
-        "consentsToContactingCurrentEmployer": true,
-        "willingToProvideReferences": true
+        "referredByEmployee": false
       }
     },
 
