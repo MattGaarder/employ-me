@@ -36,6 +36,12 @@ async function syncSqliteApplicationStatusesToNotion() {
       continue;
     }
 
+    // Do not overwrite manual REJECTED status in Notion if SQLite is still NOT_READY
+    if (job.applicationStatus === 'NOT_READY' && notionJob.applicationStatus === 'REJECTED') {
+      unchanged++;
+      continue;
+    }
+
     await updateNotionApplicationStatus(
       notionJob.pageId,
       job.applicationStatus,

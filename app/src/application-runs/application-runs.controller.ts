@@ -28,11 +28,13 @@ export function startApplicationRunHandler(
 
   const startedAt = new Date().toISOString();
 
+  const { browserUseVersion, llmModel } = req.body ?? {};
+
   startApplicationRun(
     runId,
     startedAt,
-    '0.13.8',
-    'qwen3.5:latest',
+    typeof browserUseVersion === 'string' ? browserUseVersion : 'unknown',
+    typeof llmModel === 'string' ? llmModel : 'unknown',
   );
 
   res.json({

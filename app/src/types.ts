@@ -6,13 +6,17 @@ export type ApplicationStatus =
   | 'NOT_READY'
   | 'RUNNING'
   | 'QUEUED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'COMPLETE'
+  | 'REJECTED';
 
 export const ALL_APPLICATION_STATUSES: ApplicationStatus[] = [
   'NOT_READY',
   'RUNNING',
   'QUEUED',
   'CANCELLED',
+  'COMPLETE',
+  'REJECTED',
 ];
 
 export type ApplicationRunStatus =

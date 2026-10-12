@@ -208,9 +208,59 @@ def _cancel_on_exit():
     stop_console_logging()
 
 
-# Register as atexit handler — fires on any clean sys.exit(), including
-# the one Browser Use calls from its own SIGINT handler.
+# Register as atexit handler — fires on any clean sys.exit().
+# NOTE: Browser Use's signal handler exits via os._exit(), which SKIPS atexit,
+# so the SignalHandler patch below is what covers Ctrl+C / SIGTERM.
 atexit.register(_cancel_on_exit)
+
+
+# ---------------------------------------------------------
+# Hook cancellation into Browser Use's own signal handler
+# ---------------------------------------------------------
+# Agent.run() builds a SignalHandler with its own telemetry-only
+# custom_exit_callback, then calls os._exit(0) on second Ctrl+C / SIGTERM.
+# Agent(custom_exit_callback=...) is silently swallowed by **kwargs, so we
+# wrap SignalHandler instead. Agent.run() imports it from browser_use.utils
+# at call time, so patching the module attribute is enough — and unlike
+# editing .venv, this survives `pip install -U browser-use`.
+
+import browser_use.utils as _bu_utils
+
+_OriginalSignalHandler = _bu_utils.SignalHandler
+
+
+class _EmployMeSignalHandler(_OriginalSignalHandler):
+    def __init__(self, *args, custom_exit_callback=None, **kwargs):
+        browser_use_callback = custom_exit_callback
+
+        def chained_exit_callback():
+            try:
+                _cancel_on_exit()
+            finally:
+                if browser_use_callback:
+                    browser_use_callback()
+
+        super().__init__(
+            *args,
+            custom_exit_callback=chained_exit_callback,
+            **kwargs,
+        )
+
+
+_bu_utils.SignalHandler = _EmployMeSignalHandler
+
+
+def sync_sqlite_to_notion():
+    """Push SQLite application statuses to Notion (never aborts the run)."""
+    app_dir = Path(__file__).resolve().parent.parent / "app"
+    try:
+        subprocess.run(
+            ["npm", "run", "sync:notion:reverse"],
+            cwd=str(app_dir),
+            check=False,
+        )
+    except Exception as exc:
+        print(f"[notion] Reverse sync failed: {exc}", flush=True)
 
 
 # ---------------------------------------------------------
@@ -273,9 +323,18 @@ def claim_next_application():
     return data
 
 
-def start_application_run():
+def start_application_run(llm_model: str):
+    try:
+        browser_use_version = version("browser-use")
+    except PackageNotFoundError:
+        browser_use_version = "unknown"
+
     response = requests.post(
-        f"{API_BASE_URL}/application-runs/{RUN_ID}/start"
+        f"{API_BASE_URL}/application-runs/{RUN_ID}/start",
+        json={
+            "browserUseVersion": browser_use_version,
+            "llmModel": llm_model,
+        },
     )
     response.raise_for_status()
     data = response.json()
@@ -493,9 +552,9 @@ async def main():
 
     llm = ChatGoogle(
         model="gemini-3.8-flash",
-        max_retries=8,
-        retry_base_delay=2.0,
-        retry_max_delay=60.0,
+        max_retries=12,
+        retry_base_delay=5.0,
+        retry_max_delay=120.0,
     )
 
     fallback_llm = ChatOllama(
@@ -567,16 +626,18 @@ upload, use the generated cover-letter text if it is available.
             "/Users/matteusgaarder/Desktop/Projects/employ-me/app/src/ai/GAARDER-CV.docx",
             str(cover_letter_path),
         ],
-        # Hook into Browser Use's own Ctrl+C exit path.
-        # This fires just before Browser Use calls sys.exit() on the second Ctrl+C.
-        custom_exit_callback=_cancel_on_exit,
+        # Ctrl+C cancellation is wired via _EmployMeSignalHandler above;
+        # Agent does not accept custom_exit_callback.
     )
 
     _diagnostics_agent = agent
 
     try:
         # Tell employ-me that Browser Use is starting → RUNNING.
-        start_application_run()
+        start_application_run(llm_model=str(llm.model))
+
+        # Reflect RUNNING in Notion (SQLite was set to RUNNING on claim).
+        sync_sqlite_to_notion()
 
         print("\n========== BROWSER USE START ==========\n")
 

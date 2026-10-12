@@ -18,3 +18,7 @@ app/src/ai/cover-letters/
 
 # Browser automation diagnostic runs
 browser-use/runs/
+
+# SQLite databases
+app/data/
+!app/data/.gitkeep
