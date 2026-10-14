@@ -6,6 +6,8 @@ node_modules/
 .env
 .env.*
 !.env.example
+app/src/ai/form-details.json
+form-details.json
 
 # OS files
 .DS_Store

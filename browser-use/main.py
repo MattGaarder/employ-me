@@ -730,9 +730,10 @@ upload, use the generated cover-letter text if it is available.
 
         # Mark the run as complete — deregister cancel atexit before calling.
         _cancellation_done_set()
+        final_summary = result.final_result() if hasattr(result, "final_result") else None
         complete_application_run(
             steps_completed=current_step,
-            final_result=str(result),
+            final_result=str(final_summary or ""),
             log_file=str(LOG_FILE),
             history_file=str(HISTORY_FILE),
         )

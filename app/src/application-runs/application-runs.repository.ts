@@ -232,15 +232,16 @@ export function cancelApplicationRun(
     }
 
     if (!row.started_at) {
-      throw new Error(
-        `Application run ${id} has no started_at timestamp`,
+      console.warn(
+        `[application-runs] Run ${id} was cancelled before starting (no started_at timestamp). Defaulting duration to 0s.`,
       );
     }
 
-    const durationSeconds =
-      (new Date(finishedAt).getTime() -
-        new Date(row.started_at).getTime()) /
-      1000;
+    const durationSeconds = row.started_at
+      ? (new Date(finishedAt).getTime() -
+          new Date(row.started_at).getTime()) /
+        1000
+      : 0;
 
     db.prepare(`
       UPDATE application_runs
@@ -298,14 +299,16 @@ export function failApplicationRun(
   }
 
   if (!row.started_at) {
-    throw new Error(
-      `Application run ${id} has no started_at timestamp`,
+    console.warn(
+      `[application-runs] Run ${id} failed before starting (no started_at timestamp). Defaulting duration to 0s. Error: ${errorMessage}`,
     );
   }
 
-  const durationSeconds =
-    (new Date(finishedAt).getTime() -
-      new Date(row.started_at).getTime()) / 1000;
+  const durationSeconds = row.started_at
+    ? (new Date(finishedAt).getTime() -
+        new Date(row.started_at).getTime()) /
+      1000
+    : 0;
 
   getDb()
     .prepare(`
