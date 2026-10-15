@@ -8,6 +8,7 @@ export type ApplicationStatus =
   | 'QUEUED'
   | 'CANCELLED'
   | 'COMPLETE'
+  | 'FAILED'
   | 'REJECTED';
 
 export const ALL_APPLICATION_STATUSES: ApplicationStatus[] = [
@@ -16,6 +17,7 @@ export const ALL_APPLICATION_STATUSES: ApplicationStatus[] = [
   'QUEUED',
   'CANCELLED',
   'COMPLETE',
+  'FAILED',
   'REJECTED',
 ];
 
@@ -24,6 +26,7 @@ export type ApplicationRunStatus =
   | 'RUNNING'
   | 'COMPLETE'
   | 'ERROR'
+  | 'FAILED'
   | 'TIMEOUT'
   | 'HUMAN_REQUIRED'
   | 'CANCELLED';
@@ -33,6 +36,7 @@ export const ALL_APPLICATION_RUN_STATUSES: ApplicationRunStatus[] = [
   'RUNNING',
   'COMPLETE',
   'ERROR',
+  'FAILED',
   'TIMEOUT',
   'HUMAN_REQUIRED',
   'CANCELLED',

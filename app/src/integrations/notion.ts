@@ -9,6 +9,9 @@ export interface NotionJobStatus {
   pageId: string;
   sourceJobId: string;
   applicationStatus: string;
+  applicationUrl: string | null;
+  notes: string | null;
+  coverLetter: string | null;
 }
 
 const notionToken = process.env.NOTION_TOKEN;
@@ -88,25 +91,50 @@ export async function getNotionJobStatuses(): Promise<NotionJobStatus[]> {
 
       const sourceJobIdProperty = properties['Source job ID'];
       const applicationStatusProperty = properties['Application status'];
+      const applicationUrlProperty = properties['Application URL'];
+      const notesProperty = properties['Notes'];
+      const coverLetterProperty = properties['Cover letter'];
 
       const sourceJobId =
-      sourceJobIdProperty?.type === 'rich_text'
-        ? sourceJobIdProperty.rich_text
-            .map((item) => item.plain_text)
-            .join('')
-        : '';
+        sourceJobIdProperty?.type === 'rich_text'
+          ? sourceJobIdProperty.rich_text
+              .map((item) => item.plain_text)
+              .join('')
+          : '';
 
       const applicationStatus =
         applicationStatusProperty?.type === 'select'
           ? applicationStatusProperty.select?.name ?? ''
           : '';
 
+      const applicationUrl =
+        applicationUrlProperty?.type === 'url'
+          ? applicationUrlProperty.url
+          : null;
+
+      const notes =
+        notesProperty?.type === 'rich_text'
+          ? notesProperty.rich_text
+              .map((item) => item.plain_text)
+              .join('')
+          : null;
+
+      const coverLetter =
+        coverLetterProperty?.type === 'rich_text'
+          ? coverLetterProperty.rich_text
+              .map((item) => item.plain_text)
+              .join('')
+          : null;
+
       return {
-      pageId: page.id,
-      sourceJobId,
-      applicationStatus,
-    };
-  });
+        pageId: page.id,
+        sourceJobId,
+        applicationStatus,
+        applicationUrl,
+        notes,
+        coverLetter,
+      };
+    });
 }
 
 export async function updateNotionApplicationStatus(
@@ -137,6 +165,47 @@ export async function updateNotionJobDescription(
       },
     },
   });
+}
+
+export async function updateNotionStatusBySourceJobId(
+  sourceJobId: string,
+  applicationStatus: string,
+): Promise<boolean> {
+  if (!sourceJobId) {
+    console.warn('[notion] updateNotionStatusBySourceJobId called with empty sourceJobId');
+    return false;
+  }
+
+  try {
+    const dataSourceId = await getDataSourceId();
+    const response = await (notion as any).dataSources.query({
+      data_source_id: dataSourceId,
+      filter: {
+        property: 'Source job ID',
+        rich_text: {
+          equals: sourceJobId,
+        },
+      },
+    });
+
+    if (!response.results || response.results.length === 0) {
+      console.warn(`[notion] No page found for Source job ID: ${sourceJobId}`);
+      return false;
+    }
+
+    const pageId = response.results[0].id;
+    await updateNotionApplicationStatus(pageId, applicationStatus);
+    console.log(
+      `[notion] Updated Source job ID ${sourceJobId} (page ${pageId}) status to ${applicationStatus}`,
+    );
+    return true;
+  } catch (error) {
+    console.error(
+      `[notion] Failed to update status to ${applicationStatus} for Source job ID ${sourceJobId}:`,
+      error,
+    );
+    return false;
+  }
 }
 
 export { notion, getDataSourceId, toRichText };

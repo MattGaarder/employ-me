@@ -54,10 +54,10 @@ SQLite (`better-sqlite3`) is the source of truth for the pipeline. Notion is the
 | Direction | Script | Purpose |
 |---|---|---|
 | Notion → SQLite | `npm run sync:notion` | Picks up statuses I set by hand in Notion (e.g. marking a job `QUEUED` to apply, or `REJECTED`) |
-| SQLite → Notion | `npm run sync:notion:reverse` | Pushes pipeline statuses (`RUNNING`, `COMPLETE`, `CANCELLED`) back to Notion |
+| SQLite → Notion | `npm run sync:notion:reverse` | Pushes pipeline statuses (`RUNNING`, `COMPLETE`, `FAILED`, `CANCELLED`) back to Notion |
 
 - Rows are matched by LinkedIn **source job ID**
-- Statuses are checked against a typed `ApplicationStatus` list (`NOT_READY`, `QUEUED`, `RUNNING`, `COMPLETE`, `CANCELLED`, `REJECTED`), and unknown values are skipped with a warning
+- Statuses are checked against a typed `ApplicationStatus` list (`NOT_READY`, `QUEUED`, `RUNNING`, `COMPLETE`, `FAILED`, `CANCELLED`, `REJECTED`), and unknown values are skipped with a warning
 - Safeguards stop the reverse sync from overwriting statuses set by hand in Notion
 - New jobs are created in Notion with all properties, and long descriptions are split into chunks to fit Notion's 2,000-character block limit
 

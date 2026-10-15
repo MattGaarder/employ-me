@@ -89,9 +89,16 @@ export class ScraperService {
 
   private static isCircuitOpen = false;
   private static circuitBreakerReason: string | null = null;
+  private static circuitBreakerOpenedAt: number = 0;
+  private static readonly CIRCUIT_BREAKER_COOLDOWN_MS = 60 * 1000;
   private static lastOperationTime = 0;
 
   static isCircuitBreakerOpen(): boolean {
+    if (this.isCircuitOpen && Date.now() - this.circuitBreakerOpenedAt > this.CIRCUIT_BREAKER_COOLDOWN_MS) {
+      logger.info('[linkedin] Circuit breaker cooldown expired — auto-resetting to CLOSED');
+      this.isCircuitOpen = false;
+      this.circuitBreakerReason = null;
+    }
     return this.isCircuitOpen;
   }
 
@@ -106,7 +113,7 @@ export class ScraperService {
       return;
     }
 
-    if (this.isCircuitOpen) {
+    if (this.isCircuitBreakerOpen()) {
       const msg = `Circuit breaker is OPEN: ${this.circuitBreakerReason || 'LinkedIn restriction detected'}`;
       logger.warn(`[linkedin] Refusing operation — ${msg}`);
       throw new Error(msg);
@@ -116,6 +123,7 @@ export class ScraperService {
   private static tripCircuitBreaker(reason: string): void {
     this.isCircuitOpen = true;
     this.circuitBreakerReason = reason;
+    this.circuitBreakerOpenedAt = Date.now();
     logger.error(`[linkedin] Circuit breaker opened`);
     logger.error(`[linkedin] Reason: ${reason}`);
   }

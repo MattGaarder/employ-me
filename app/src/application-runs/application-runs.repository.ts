@@ -129,6 +129,11 @@ export function updateApplicationRunProgress(
 }
 
 
+export interface ApplicationRunActionResult {
+  durationSeconds: number;
+  sourceJobId: string | null;
+}
+
 export function completeApplicationRun(
   id: number,
   finishedAt: string,
@@ -136,19 +141,24 @@ export function completeApplicationRun(
   finalResult: string | null,
   logFile: string | null,
   historyFile: string | null,
-): number {
+): ApplicationRunActionResult {
   const db = getDb();
 
-  const complete = db.transaction(() => {
+  const complete = db.transaction((): ApplicationRunActionResult => {
     const row = db
       .prepare(`
-        SELECT job_id, started_at
-        FROM application_runs
-        WHERE id = ?
+        SELECT
+          r.job_id,
+          r.started_at,
+          j.source_job_id
+        FROM application_runs r
+        JOIN jobs j ON j.id = r.job_id
+        WHERE r.id = ?
       `)
       .get(id) as {
         job_id: number;
         started_at: string | null;
+        source_job_id: string;
       } | undefined;
 
     if (!row) {
@@ -199,7 +209,10 @@ export function completeApplicationRun(
       row.job_id,
     );
 
-    return durationSeconds;
+    return {
+      durationSeconds,
+      sourceJobId: row.source_job_id ?? null,
+    };
   });
 
   return complete();
@@ -210,21 +223,24 @@ export function cancelApplicationRun(
   finishedAt: string,
   logFile: string | null,
   historyFile: string | null,
-): number {
+): ApplicationRunActionResult {
   const db = getDb();
 
-  const cancel = db.transaction(() => {
+  const cancel = db.transaction((): ApplicationRunActionResult => {
     const row = db
       .prepare(`
         SELECT
-          job_id,
-          started_at
-        FROM application_runs
-        WHERE id = ?
+          r.job_id,
+          r.started_at,
+          j.source_job_id
+        FROM application_runs r
+        JOIN jobs j ON j.id = r.job_id
+        WHERE r.id = ?
       `)
       .get(id) as {
         job_id: number;
         started_at: string | null;
+        source_job_id: string;
       } | undefined;
 
     if (!row) {
@@ -272,7 +288,10 @@ export function cancelApplicationRun(
       row.job_id,
     );
 
-    return durationSeconds;
+    return {
+      durationSeconds,
+      sourceJobId: row.source_job_id ?? null,
+    };
   });
 
   return cancel();
@@ -285,54 +304,104 @@ export function failApplicationRun(
   errorMessage: string,
   logFile: string | null,
   historyFile: string | null,
-): number {
-  const row = getDb()
-    .prepare(`
-      SELECT started_at
-      FROM application_runs
-      WHERE id = ?
-    `)
-    .get(id) as { started_at: string | null } | undefined;
+  stepsCompleted?: number | null,
+  finalResult?: string | null,
+): ApplicationRunActionResult {
+  const db = getDb();
 
-  if (!row) {
-    throw new Error(`Application run ${id} not found`);
-  }
+  const fail = db.transaction((): ApplicationRunActionResult => {
+    const row = db
+      .prepare(`
+        SELECT
+          r.job_id,
+          r.started_at,
+          j.source_job_id
+        FROM application_runs r
+        JOIN jobs j ON j.id = r.job_id
+        WHERE r.id = ?
+      `)
+      .get(id) as {
+        job_id: number;
+        started_at: string | null;
+        source_job_id: string;
+      } | undefined;
 
-  if (!row.started_at) {
-    console.warn(
-      `[application-runs] Run ${id} failed before starting (no started_at timestamp). Defaulting duration to 0s. Error: ${errorMessage}`,
-    );
-  }
+    if (!row) {
+      throw new Error(`Application run ${id} not found`);
+    }
 
-  const durationSeconds = row.started_at
-    ? (new Date(finishedAt).getTime() -
-        new Date(row.started_at).getTime()) /
-      1000
-    : 0;
+    if (!row.started_at) {
+      console.warn(
+        `[application-runs] Run ${id} failed before starting (no started_at timestamp). Defaulting duration to 0s. Error: ${errorMessage}`,
+      );
+    }
 
-  getDb()
-    .prepare(`
+    const durationSeconds = row.started_at
+      ? (new Date(finishedAt).getTime() -
+          new Date(row.started_at).getTime()) /
+        1000
+      : 0;
+
+    db.prepare(`
       UPDATE application_runs
       SET
         status = ?,
         finished_at = ?,
         duration_seconds = ?,
+        steps_completed = COALESCE(?, steps_completed),
+        final_result = COALESCE(?, final_result),
         error_message = ?,
         log_file = ?,
         history_file = ?
       WHERE id = ?
-    `)
-    .run(
+    `).run(
       'ERROR',
       finishedAt,
       durationSeconds,
+      stepsCompleted ?? null,
+      finalResult ?? null,
       errorMessage,
       logFile,
       historyFile,
       id,
     );
 
-  return durationSeconds;
+    db.prepare(`
+      UPDATE jobs
+      SET
+        application_status = 'FAILED',
+        updated_at = ?
+      WHERE id = ?
+    `).run(
+      finishedAt,
+      row.job_id,
+    );
+
+    return {
+      durationSeconds,
+      sourceJobId: row.source_job_id ?? null,
+    };
+  });
+
+  return fail();
+}
+
+export function findJobByRunId(
+  runId: number,
+): { id: number; sourceJobId: string; applicationStatus: string } | undefined {
+  const row = getDb()
+    .prepare(`
+      SELECT
+        j.id,
+        j.source_job_id AS sourceJobId,
+        j.application_status AS applicationStatus
+      FROM jobs j
+      JOIN application_runs r ON r.job_id = j.id
+      WHERE r.id = ?
+    `)
+    .get(runId) as { id: number; sourceJobId: string; applicationStatus: string } | undefined;
+
+  return row;
 }
 
 
@@ -372,6 +441,7 @@ export interface ClaimedApplication {
   runId: number;
   job: {
     id: number;
+    sourceJobId: string;
     title: string;
     company: string;
     applicationUrl: string;
@@ -408,6 +478,7 @@ export function claimNextQueuedApplication(): ClaimResult {
       .prepare(`
         SELECT
           id,
+          source_job_id,
           title,
           company,
           application_url
@@ -419,6 +490,7 @@ export function claimNextQueuedApplication(): ClaimResult {
       `)
       .get() as {
         id: number;
+        source_job_id: string;
         title: string;
         company: string;
         application_url: string;
@@ -457,6 +529,7 @@ export function claimNextQueuedApplication(): ClaimResult {
       runId: run.id!,
       job: {
         id: row.id,
+        sourceJobId: row.source_job_id,
         title: row.title,
         company: row.company,
         applicationUrl: row.application_url,

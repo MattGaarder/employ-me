@@ -6,9 +6,9 @@ import path from 'path';
 import { Job } from '../types';
 import { SYSTEM_PROMPT } from './prompt';
 
-loadEnv({
-  path: path.resolve(process.cwd(), '../.env'),
-});
+loadEnv();
+loadEnv({ path: path.resolve(__dirname, '../../.env') });
+loadEnv({ path: path.resolve(process.cwd(), '../.env') });
 
 const apiKey = process.env.GOOGLE_API_KEY;
 
@@ -123,17 +123,59 @@ Evaluate this job according to the instructions.
   //   }
   // });
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.8-flash',
-    contents: userPrompt,
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      responseMimeType: 'application/json',
-      responseSchema: evaluationSchema,
-      maxOutputTokens: 2048,
-    },
-  });
+  async function generateWithRetry(modelName: string, maxRetries = 2) {
+    let lastError: any;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await ai.models.generateContent({
+          model: modelName,
+          contents: userPrompt,
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            responseMimeType: 'application/json',
+            responseSchema: evaluationSchema,
+            maxOutputTokens: 2048,
+          },
+        });
+      } catch (err: any) {
+        lastError = err;
+        const errMsg = err?.message || String(err);
+        const isRetryable =
+          errMsg.includes('503') ||
+          errMsg.includes('UNAVAILABLE') ||
+          errMsg.includes('429') ||
+          errMsg.includes('high demand');
 
+        if (isRetryable && attempt < maxRetries) {
+          const delayMs = attempt * 2000;
+          console.warn(
+            `[ai] Model ${modelName} hit transient error (${errMsg}). Retrying in ${delayMs / 1000}s (attempt ${attempt}/${maxRetries})...`
+          );
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        } else {
+          throw err;
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  let response;
+  try {
+    response = await generateWithRetry('gemini-3.5-flash-lite', 2);
+  } catch (primaryErr: any) {
+    console.warn(
+      `[ai] Primary model (gemini-3.5-flash-lite) failed: ${primaryErr.message || primaryErr}. Trying fallback (gemini-3-flash-preview)...`,
+    );
+    try {
+      response = await generateWithRetry('gemini-3-flash-preview', 2);
+    } catch (fallbackErr: any) {
+      console.warn(
+        `[ai] Fallback model (gemini-3-flash-preview) failed: ${fallbackErr.message || fallbackErr}. Trying gemini-3.8-flash...`,
+      );
+      response = await generateWithRetry('gemini-3.8-flash', 2);
+    }
+  }
 
   const duration = ((Date.now() - start) / 1000).toFixed(1);
   console.log(`[ai] Evaluation completed in ${duration}s`);

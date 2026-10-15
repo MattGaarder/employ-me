@@ -50,7 +50,7 @@ async function syncSqliteApplicationStatusesToNotion() {
     updated++;
 
     console.log(
-      `[notion-sync-reverse] ${notionJob.sourceJobId}: Notion ${notionJob.applicationStatus} → SQLite ${job.applicationStatus}`,
+      `[notion-sync-reverse] ${notionJob.sourceJobId}: Notion updated ${notionJob.applicationStatus} → ${job.applicationStatus}`,
     );
   }
 

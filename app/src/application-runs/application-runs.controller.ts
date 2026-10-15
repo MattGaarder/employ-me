@@ -8,14 +8,17 @@ import {
   failApplicationRun,
   findApplicationRunsByJobId,
   claimNextQueuedApplication,
+  findJobByRunId,
 } from './application-runs.repository';
+import { updateNotionStatusBySourceJobId } from '../integrations/notion';
+import { syncNotionApplicationStatuses } from '../services/notionsql-sync';
 
 // ─── Start application run ───────────────────────────────────────────────────
 
-export function startApplicationRunHandler(
+export async function startApplicationRunHandler(
   req: Request,
   res: Response,
-): void {
+): Promise<void> {
   const runId = Number(req.params.id);
 
   if (!Number.isInteger(runId)) {
@@ -36,6 +39,11 @@ export function startApplicationRunHandler(
     typeof browserUseVersion === 'string' ? browserUseVersion : 'unknown',
     typeof llmModel === 'string' ? llmModel : 'unknown',
   );
+
+  const job = findJobByRunId(runId);
+  if (job?.sourceJobId) {
+    await updateNotionStatusBySourceJobId(job.sourceJobId, 'RUNNING');
+  }
 
   res.json({
     ok: true,
@@ -90,10 +98,10 @@ export function updateApplicationRunProgressHandler(
 
 // ─── Complete application run ───────────────────────────────────────────────
 
-export function completeApplicationRunHandler(
+export async function completeApplicationRunHandler(
   req: Request,
   res: Response,
-): void {
+): Promise<void> {
   const runId = Number(req.params.id);
 
   if (!Number.isInteger(runId)) {
@@ -121,7 +129,7 @@ export function completeApplicationRunHandler(
 
   const finishedAt = new Date().toISOString();
 
-  const durationSeconds = completeApplicationRun(
+  const { durationSeconds, sourceJobId } = completeApplicationRun(
     runId,
     finishedAt,
     stepsCompleted,
@@ -129,6 +137,10 @@ export function completeApplicationRunHandler(
     logFile ?? null,
     historyFile ?? null,
   );
+
+  if (sourceJobId) {
+    await updateNotionStatusBySourceJobId(sourceJobId, 'COMPLETE');
+  }
 
   res.json({
     ok: true,
@@ -145,10 +157,10 @@ export function completeApplicationRunHandler(
 // ─── Fail application run ───────────────────────────────────────────────────
 
 
-export function failApplicationRunHandler(
+export async function failApplicationRunHandler(
   req: Request,
   res: Response,
-): void {
+): Promise<void> {
   const runId = Number(req.params.id);
 
   if (!Number.isInteger(runId)) {
@@ -163,6 +175,8 @@ export function failApplicationRunHandler(
     errorMessage,
     logFile,
     historyFile,
+    stepsCompleted,
+    finalResult,
   } = req.body;
 
   if (
@@ -178,13 +192,19 @@ export function failApplicationRunHandler(
 
   const finishedAt = new Date().toISOString();
 
-  const durationSeconds = failApplicationRun(
+  const { durationSeconds, sourceJobId } = failApplicationRun(
     runId,
     finishedAt,
     errorMessage,
     logFile ?? null,
     historyFile ?? null,
+    Number.isInteger(stepsCompleted) ? stepsCompleted : null,
+    typeof finalResult === 'string' ? finalResult : null,
   );
+
+  if (sourceJobId) {
+    await updateNotionStatusBySourceJobId(sourceJobId, 'FAILED');
+  }
 
   res.json({
     ok: true,
@@ -198,10 +218,10 @@ export function failApplicationRunHandler(
 
 // ─── Cancel application run ─────────────────────────────────────────────────
 
-export function cancelApplicationRunHandler(
+export async function cancelApplicationRunHandler(
   req: Request,
   res: Response,
-): void {
+): Promise<void> {
   const runId = Number(req.params.id);
 
   if (!Number.isInteger(runId)) {
@@ -220,12 +240,16 @@ export function cancelApplicationRunHandler(
   const finishedAt = new Date().toISOString();
 
   try {
-    const durationSeconds = cancelApplicationRun(
+    const { durationSeconds, sourceJobId } = cancelApplicationRun(
       runId,
       finishedAt,
       logFile ?? null,
       historyFile ?? null,
     );
+
+    if (sourceJobId) {
+      await updateNotionStatusBySourceJobId(sourceJobId, 'CANCELLED');
+    }
 
     res.json({
       ok: true,
@@ -272,11 +296,22 @@ export function getApplicationRunsByJobIdHandler(
   });
 }
 
-export function claimNextQueuedApplicationHandler(
+export async function claimNextQueuedApplicationHandler(
   _req: Request,
   res: Response,
-): void {
+): Promise<void> {
   try {
+    // 1. Synchronise Notion database to SQLite database before claiming
+    try {
+      await syncNotionApplicationStatuses();
+    } catch (syncError) {
+      console.warn(
+        '[application-runs] Warning: Failed to sync Notion to SQLite prior to claim:',
+        syncError,
+      );
+    }
+
+    // 2. Claim next queued job from SQLite
     const result = claimNextQueuedApplication();
 
     if (!result.ok) {
@@ -287,6 +322,10 @@ export function claimNextQueuedApplicationHandler(
         error: result.message,
       });
       return;
+    }
+
+    if (result.job.sourceJobId) {
+      await updateNotionStatusBySourceJobId(result.job.sourceJobId, 'RUNNING');
     }
 
     res.json({

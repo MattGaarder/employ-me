@@ -1,7 +1,7 @@
 import { getNotionJobStatuses } from '../integrations/notion';
 import {
   findBySourceJobId,
-  updateApplicationStatus,
+  updateJobDetailsFromNotion,
 } from '../jobs/jobs.repository';
 import {
   ApplicationStatus,
@@ -57,22 +57,53 @@ export async function syncNotionApplicationStatuses() {
       continue;
     }
 
-    // Nothing to do if SQLite already has the same status
-    if (job.applicationStatus === notionJob.applicationStatus) {
+    const statusChanged = job.applicationStatus !== notionJob.applicationStatus;
+    const urlChanged =
+      notionJob.applicationUrl !== null &&
+      notionJob.applicationUrl !== undefined &&
+      notionJob.applicationUrl.trim() !== '' &&
+      notionJob.applicationUrl !== job.applicationUrl;
+    const notesChanged =
+      notionJob.notes !== null &&
+      notionJob.notes !== undefined &&
+      notionJob.notes !== job.notes;
+    const coverLetterChanged =
+      notionJob.coverLetter !== null &&
+      notionJob.coverLetter !== undefined &&
+      notionJob.coverLetter !== job.coverLetter;
+
+    if (!statusChanged && !urlChanged && !notesChanged && !coverLetterChanged) {
       unchanged++;
       continue;
     }
 
-    // Update SQLite
-    updateApplicationStatus(
+    // Update SQLite with all changed properties
+    updateJobDetailsFromNotion(
       job.id!,
       notionJob.applicationStatus,
+      notionJob.applicationUrl ?? job.applicationUrl,
+      notionJob.notes ?? job.notes,
+      notionJob.coverLetter ?? job.coverLetter,
     );
 
     updated++;
 
+    const changeDescriptions: string[] = [];
+    if (statusChanged) {
+      changeDescriptions.push(`status: ${job.applicationStatus} → ${notionJob.applicationStatus}`);
+    }
+    if (urlChanged) {
+      changeDescriptions.push(`url: ${job.applicationUrl} → ${notionJob.applicationUrl}`);
+    }
+    if (notesChanged) {
+      changeDescriptions.push('notes updated');
+    }
+    if (coverLetterChanged) {
+      changeDescriptions.push('cover letter updated');
+    }
+
     console.log(
-      `[notion-sync] ${notionJob.sourceJobId}: ${job.applicationStatus} → ${notionJob.applicationStatus}`,
+      `[notion-sync] ${notionJob.sourceJobId}: ${changeDescriptions.join(', ')}`,
     );
   }
 

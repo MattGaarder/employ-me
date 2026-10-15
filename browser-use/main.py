@@ -17,7 +17,7 @@ from diagnostics import RunDiagnostics
 
 import requests
 
-from browser_use import Agent, Browser, ChatGoogle, ChatOllama
+from browser_use import Agent, Browser, ChatGoogle
 project_root = Path(__file__).resolve().parent.parent
 
 load_dotenv(Path(__file__).resolve().parent.parent / "app" / ".env")
@@ -309,6 +309,26 @@ class _EmployMeSignalHandler(_OriginalSignalHandler):
 _bu_utils.SignalHandler = _EmployMeSignalHandler
 
 
+def sync_notion_to_sqlite():
+    """Pull Notion updates into SQLite at the start of a run."""
+    app_dir = Path(__file__).resolve().parent.parent / "app"
+    try:
+        print("[sync] Synchronising Notion database to SQLite...", flush=True)
+        res = subprocess.run(
+            ["npm", "run", "sync:notion"],
+            cwd=str(app_dir),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode == 0:
+            print("[sync] Notion → SQLite synchronised successfully.", flush=True)
+        else:
+            print(f"[sync] Warning: Notion sync returned non-zero: {res.stderr or res.stdout}", flush=True)
+    except Exception as exc:
+        print(f"[sync] Notion sync failed: {exc}", flush=True)
+
+
 def sync_sqlite_to_notion():
     """Push SQLite application statuses to Notion (never aborts the run)."""
     app_dir = Path(__file__).resolve().parent.parent / "app"
@@ -476,14 +496,22 @@ def fail_application_run(
     error_message: str,
     log_file: str | None,
     history_file: str | None,
+    steps_completed: int | None = None,
+    final_result: str | None = None,
 ):
+    payload = {
+        "errorMessage": error_message,
+        "logFile": log_file,
+        "historyFile": history_file,
+    }
+    if steps_completed is not None:
+        payload["stepsCompleted"] = steps_completed
+    if final_result is not None:
+        payload["finalResult"] = final_result
+
     response = requests.post(
         f"{API_BASE_URL}/application-runs/{RUN_ID}/fail",
-        json={
-            "errorMessage": error_message,
-            "logFile": log_file,
-            "historyFile": history_file,
-        },
+        json=payload,
     )
     response.raise_for_status()
     data = response.json()
@@ -517,12 +545,18 @@ def cancel_application_run(
 async def main():
     global RUN_ID, _diagnostics, _diagnostics_agent
 
+    # Synchronise Notion database to SQLite before claiming
+    sync_notion_to_sqlite()
+
     claimed = claim_next_application()
 
     RUN_ID = claimed["runId"]
     job = claimed["job"]
 
     os.environ["EMPLOY_ME_RUN_ID"] = str(RUN_ID)
+
+    # Immediately push RUNNING status to Notion so it reflects on the board
+    sync_sqlite_to_notion()
 
     setup_run_files(RUN_ID)
     start_console_logging()
@@ -539,7 +573,7 @@ async def main():
 
         _diagnostics = RunDiagnostics(
             run_id=RUN_ID,
-            model="gemini-3.8-flash",
+            model="gemini-3.1-pro-preview",
             browser_use_version=browser_use_version,
             step_timeout=180,
             llm_timeout=900,
@@ -610,14 +644,17 @@ async def main():
     
 
     llm = ChatGoogle(
-        model="gemini-3.8-flash",
-        max_retries=12,
-        retry_base_delay=5.0,
-        retry_max_delay=120.0,
+        model="gemini-3.1-pro-preview", 
+        max_retries=3,
+        retry_base_delay=2.0,
+        retry_max_delay=60.0,
     )
 
-    fallback_llm = ChatOllama(
-        model="qwen3.5:latest",
+    fallback_llm = ChatGoogle(
+        model="gemini-3.8-flash", 
+        max_retries=3,
+        retry_base_delay=2.0,
+        retry_max_delay=60.0,
     )
 
     # Track LLM request durations and any usage metadata returned.
@@ -715,35 +752,80 @@ upload, use the generated cover-letter text if it is available.
         print(f"Log saved to:     {LOG_FILE}")
         print("===========================================\n")
 
-        # Save the final diagnostics report.
-        if _diagnostics is not None:
-            try:
-                await _diagnostics.finalize(
-                    agent=agent,
-                    outcome="COMPLETED",
-                )
-            except Exception as exc:
-                print(
-                    f"[diagnostics] Warning: Finalisation failed: {exc}",
-                    flush=True,
-                )
-
-        # Mark the run as complete — deregister cancel atexit before calling.
-        _cancellation_done_set()
+        # Check if the run succeeded or encountered a failure condition
+        is_successful = result.is_successful() if hasattr(result, "is_successful") else None
+        judgement = result.judgement() if hasattr(result, "judgement") else None
+        judge_verdict = judgement.get("verdict") if judgement else None
+        is_done = result.is_done() if hasattr(result, "is_done") else True
         final_summary = result.final_result() if hasattr(result, "final_result") else None
-        complete_application_run(
-            steps_completed=current_step,
-            final_result=str(final_summary or ""),
-            log_file=str(LOG_FILE),
-            history_file=str(HISTORY_FILE),
+
+        run_failed = (
+            is_successful is False
+            or judge_verdict is False
+            or (is_successful is None and not is_done)
         )
+
+        if run_failed:
+            failure_reason = None
+            if judgement and judgement.get("failure_reason"):
+                failure_reason = judgement.get("failure_reason")
+            elif final_summary:
+                failure_reason = final_summary
+            elif hasattr(result, "errors") and result.errors():
+                failure_reason = "; ".join(str(e) for e in result.errors())
+            else:
+                failure_reason = "Application run failed to complete successfully"
+
+            print(f"\n[agent] Run encountered a failure condition: {failure_reason}")
+
+            # Save the final diagnostics report.
+            if _diagnostics is not None:
+                try:
+                    await _diagnostics.finalize(
+                        agent=agent,
+                        outcome="FAILED",
+                        error_message=str(failure_reason),
+                    )
+                except Exception as exc:
+                    print(
+                        f"[diagnostics] Warning: Finalisation failed: {exc}",
+                        flush=True,
+                    )
+
+            # Mark the run as failed — deregister cancel atexit before calling.
+            _cancellation_done_set()
+            fail_application_run(
+                error_message=str(failure_reason),
+                log_file=str(LOG_FILE),
+                history_file=str(HISTORY_FILE),
+                steps_completed=current_step,
+                final_result=str(final_summary or ""),
+            )
+        else:
+            # Save the final diagnostics report.
+            if _diagnostics is not None:
+                try:
+                    await _diagnostics.finalize(
+                        agent=agent,
+                        outcome="COMPLETED",
+                    )
+                except Exception as exc:
+                    print(
+                        f"[diagnostics] Warning: Finalisation failed: {exc}",
+                        flush=True,
+                    )
+
+            # Mark the run as complete — deregister cancel atexit before calling.
+            _cancellation_done_set()
+            complete_application_run(
+                steps_completed=current_step,
+                final_result=str(final_summary or ""),
+                log_file=str(LOG_FILE),
+                history_file=str(HISTORY_FILE),
+            )
 
         # Sync final SQLite application status back to Notion.
-        subprocess.run(
-            ["npm", "run", "sync:notion:reverse"],
-            cwd=str(Path(__file__).parent / "../app"),
-            check=True,
-        )
+        sync_sqlite_to_notion()
 
     except KeyboardInterrupt:
         # asyncio may surface the interrupt here before Browser Use's handler
@@ -791,7 +873,10 @@ upload, use the generated cover-letter text if it is available.
                 if HISTORY_FILE and HISTORY_FILE.exists()
                 else None
             ),
+            steps_completed=current_step if "current_step" in locals() else None,
         )
+
+        sync_sqlite_to_notion()
 
         raise
 

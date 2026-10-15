@@ -191,3 +191,31 @@ export function updateApplicationStatus(
     )
     .run(applicationStatus, now(), id);
 }
+
+export function updateJobDetailsFromNotion(
+  id: number,
+  applicationStatus: ApplicationStatus,
+  applicationUrl?: string | null,
+  notes?: string | null,
+  coverLetter?: string | null,
+): void {
+  getDb()
+    .prepare(`
+      UPDATE jobs
+      SET
+        application_status = ?,
+        application_url = COALESCE(?, application_url),
+        notes = COALESCE(?, notes),
+        cover_letter = COALESCE(?, cover_letter),
+        updated_at = ?
+      WHERE id = ?
+    `)
+    .run(
+      applicationStatus,
+      applicationUrl ?? null,
+      notes ?? null,
+      coverLetter ?? null,
+      now(),
+      id,
+    );
+}
